@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from pydantic import Field
 
@@ -30,9 +30,10 @@ class CheckResult(Contract):
 
 
 class VerificationReport(Contract):
-    mode: Literal["input", "output"]
     verdict: Verdict
     score: float = Field(ge=0.0, le=1.0)
-    checks: list[CheckResult]
-    revision_instructions: str | None = None
-    safe_message: str | None = None
+    feedback: str
+    suggested_improvements: list[str] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0, default=0.5)
+    revision_instructions: Optional[str] = None
+    safe_message: Optional[str] = None
