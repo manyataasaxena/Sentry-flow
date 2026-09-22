@@ -1,24 +1,3 @@
-app\db\models.py:8: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:8: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:8: error: Invalid base class "Base"  [misc]
-app\db\models.py:18: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:18: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:18: error: Invalid base class "Base"  [misc]
-app\db\models.py:49: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:49: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:49: error: Invalid base class "Base"  [misc]
-app\db\models.py:65: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:65: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:65: error: Invalid base class "Base"  [misc]
-app\db\models.py:80: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:80: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:80: error: Invalid base class "Base"  [misc]
-app\db\models.py:98: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:98: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:98: error: Invalid base class "Base"  [misc]
-app\db\models.py:116: error: Variable "app.db.models.Base" is not valid as a type  [valid-type]
-app\db\models.py:116: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-app\db\models.py:116: error: Invalid base class "Base"  [misc]
 app\core\ports.py:13: error: Missing type arguments for generic type "dict"  [type-arg]
 app\core\ports.py:31: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
 app\core\ports.py:37: error: Missing type arguments for generic type "dict"  [type-arg]
@@ -32,28 +11,25 @@ app\core\ports.py:60: error: Missing type arguments for generic type "dict"  [ty
 app\core\ports.py:61: error: Missing type arguments for generic type "dict"  [type-arg]
 app\core\logging.py:27: error: Function is missing a return type annotation  [no-untyped-def]
 app\agents\state.py:6: error: Module "app.schemas.common" has no attribute "RunStatus"  [attr-defined]
-app\db\repositories.py:18: error: Function is missing a return type annotation  [no-untyped-def]
-app\db\repositories.py:18: note: Use "-> None" if function does not return a value
 app\db\repositories.py:20: error: No overload variant of "sessionmaker" matches argument types "AsyncEngine", "type[AsyncSession]", "bool"  [call-overload]
 app\db\repositories.py:20: note: Possible overload variants:
 app\db\repositories.py:20: note:     def [_S: Session] sessionmaker(bind: Engine | Connection | None = ..., *, class_: type[_S], autoflush: bool = ..., expire_on_commit: bool = ..., info: dict[Any, Any] | None = ..., **kw: Any) -> sessionmaker[_S]
 app\db\repositories.py:20: note:     def [_S: Session] sessionmaker(bind: Engine | Connection | None = ..., *, autoflush: bool = ..., expire_on_commit: bool = ..., info: dict[Any, Any] | None = ..., **kw: Any) -> sessionmaker[Session]
-app\db\repositories.py:46: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:58: error: Returning Any from function declared to return "Run | None"  [no-any-return]
-app\db\repositories.py:60: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:70: error: Returning Any from function declared to return "Run | None"  [no-any-return]
-app\db\repositories.py:82: error: Returning Any from function declared to return "list[Run]"  [no-any-return]
-app\db\repositories.py:84: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:101: error: Returning Any from function declared to return "list[RunEvent]"  [no-any-return]
-app\db\repositories.py:107: error: Returning Any from function declared to return "User | None"  [no-any-return]
-app\db\repositories.py:113: error: Returning Any from function declared to return "User | None"  [no-any-return]
-app\db\repositories.py:123: error: Returning Any from function declared to return "list[KbDocument]"  [no-any-return]
-app\db\repositories.py:126: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:135: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:147: error: Returning Any from function declared to return "EvalRun | None"  [no-any-return]
-app\db\repositories.py:150: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:169: error: Returning Any from function declared to return "list[AuditLog]"  [no-any-return]
-app\db\repositories.py:173: error: Call to untyped function "DatabaseRepository" in typed context  [no-untyped-call]
+app\db\repositories.py:48: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:60: error: Returning Any from function declared to return "Run | None"  [no-any-return]
+app\db\repositories.py:62: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:72: error: Returning Any from function declared to return "Run | None"  [no-any-return]
+app\db\repositories.py:84: error: Returning Any from function declared to return "list[Run]"  [no-any-return]
+app\db\repositories.py:86: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:103: error: Returning Any from function declared to return "list[RunEvent]"  [no-any-return]
+app\db\repositories.py:109: error: Returning Any from function declared to return "User | None"  [no-any-return]
+app\db\repositories.py:115: error: Returning Any from function declared to return "User | None"  [no-any-return]
+app\db\repositories.py:125: error: Returning Any from function declared to return "list[KbDocument]"  [no-any-return]
+app\db\repositories.py:128: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:137: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:149: error: Returning Any from function declared to return "EvalRun | None"  [no-any-return]
+app\db\repositories.py:152: error: Missing type arguments for generic type "dict"  [type-arg]
+app\db\repositories.py:171: error: Returning Any from function declared to return "list[AuditLog]"  [no-any-return]
 app\db\redis.py:13: error: Function is missing a return type annotation  [no-untyped-def]
 app\db\redis.py:13: note: Use "-> None" if function does not return a value
 app\db\redis.py:33: error: Incompatible return value type (got "bytes | str | None", expected "str | None")  [return-value]
@@ -231,4 +207,4 @@ app\agents\graph.py:201: error: Call to untyped function "get_finalizer_fallback
 app\agents\graph.py:202: error: Argument 1 to "as_update" has incompatible type "dict[str, Any]"; expected "StateUpdate"  [arg-type]
 app\agents\graph.py:205: error: Missing type arguments for generic type "StateGraph"  [type-arg]
 app\agents\graph.py:225: error: Incompatible return value type (got "CompiledStateGraph[RunState, None, RunState, RunState]", expected "StateGraph[Any, None, Any, Any]")  [return-value]
-Found 210 errors in 23 files (checked 42 source files)
+Found 194 errors in 22 files (checked 42 source files)
