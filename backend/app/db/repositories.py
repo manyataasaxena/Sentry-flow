@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -15,9 +15,11 @@ logger = get_logger(__name__)
 class DatabaseRepository:
     """Repository for database operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._engine = create_async_engine(settings.asyncpg_dsn)
-        self._session_factory = sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
+        self._session_factory = sessionmaker(
+            self._engine, class_=AsyncSession, expire_on_commit=False
+        )
 
     async def init(self) -> None:
         """Initialize database and create tables."""
