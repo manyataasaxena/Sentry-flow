@@ -1,0 +1,32 @@
+Metadata-Version: 2.4
+Name: sentryflow
+Version: 0.1.0
+Summary: Governed Multi-Agent Orchestration Platform with LangGraph, Circuit Breakers, and Adversarial Evals
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: pydantic>=2.9.0
+Requires-Dist: pydantic-settings>=2.5.0
+Requires-Dist: langgraph>=0.2.20
+Requires-Dist: langchain-core>=0.3.0
+Requires-Dist: instructor>=1.4.0
+Requires-Dist: langfuse>=2.50.0
+Requires-Dist: psycopg[binary,pool]>=3.2.0
+Requires-Dist: sqlalchemy>=2.0.35
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: redis>=5.0.8
+Requires-Dist: httpx>=0.27.2
+Requires-Dist: structlog>=24.4.0
+Requires-Dist: tenacity>=9.0.0
+Requires-Dist: pyyaml>=6.0.2
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: passlib[bcrypt]>=1.7.4
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.14.0; extra == "dev"
+Requires-Dist: mypy>=1.11.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: import-linter>=2.0; extra == "dev"
+Requires-Dist: openapi-spec-validator>=0.7.1; extra == "dev"
