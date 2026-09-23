@@ -24,5 +24,5 @@ def configure_logging() -> None:
     )
 
 
-def get_logger(name: str):
+def get_logger(name: str) -> structlog.types.ProcessorFormatter:
     return structlog.get_logger(name)

@@ -3,7 +3,8 @@ from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field
 
-from ..schemas.common import RunStatus, BudgetUsage
+from ..schemas.run import RunStatus
+from ..schemas.common import BudgetUsage
 from ..schemas.intent import IntentClassification
 from ..schemas.plan import Plan
 from ..schemas.answer import FinalAnswer

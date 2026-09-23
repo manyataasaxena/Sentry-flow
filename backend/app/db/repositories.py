@@ -1,4 +1,4 @@
-from typing import Optional, List, Any
+from typing import Optional, List, Any, cast
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -45,7 +45,7 @@ class DatabaseRepository:
             return False
 
     # Run operations
-    async def create_run(self, run_data: dict) -> Run:
+    async def create_run(self, run_data: dict[str, Any]) -> Run:
         """Create a new run."""
         async with self._session_factory() as session:
             run = Run(**run_data)
@@ -59,7 +59,7 @@ class DatabaseRepository:
         async with self._session_factory() as session:
             return await session.get(Run, run_id)
 
-    async def update_run(self, run_id: str, update_data: dict) -> Optional[Run]:
+    async def update_run(self, run_id: str, update_data: dict[str, Any]) -> Optional[Run]:
         """Update a run."""
         async with self._session_factory() as session:
             run = await session.get(Run, run_id)
@@ -81,9 +81,9 @@ class DatabaseRepository:
                 query = query.where(Run.status == status)
             query = query.order_by(Run.created_at.desc()).limit(limit)
             result = await session.execute(query)
-            return result.scalars().all()
+            return cast(List[Run], result.scalars().all())
 
-    async def create_run_event(self, event_data: dict) -> RunEvent:
+    async def create_run_event(self, event_data: dict[str, Any]) -> RunEvent:
         """Create a run event."""
         async with self._session_factory() as session:
             event = RunEvent(**event_data)
@@ -100,7 +100,7 @@ class DatabaseRepository:
                 query = query.where(RunEvent.seq > after_seq)
             query = query.order_by(RunEvent.seq).limit(limit)
             result = await session.execute(query)
-            return result.scalars().all()
+            return cast(List[RunEvent], result.scalars().all())
 
     # User operations
     async def get_user(self, user_id: str) -> Optional[User]:
@@ -112,7 +112,7 @@ class DatabaseRepository:
         """Get a user by email."""
         async with self._session_factory() as session:
             result = await session.execute(select(User).where(User.email == email))
-            return result.scalar_one_or_none()
+            return cast(Optional[User], result.scalar_one_or_none())
 
     # KB operations
     async def search_kb(self, query: str, top_k: int = 10) -> List[KbDocument]:
@@ -122,10 +122,10 @@ class DatabaseRepository:
             result = await session.execute(
                 select(KbDocument).where(KbDocument.body.ilike(f"%{query}%")).limit(top_k)
             )
-            return result.scalars().all()
+            return cast(List[KbDocument], result.scalars().all())
 
     # Eval operations
-    async def create_eval_run(self, eval_run_data: dict) -> EvalRun:
+    async def create_eval_run(self, eval_run_data: dict[str, Any]) -> EvalRun:
         """Create an eval run."""
         async with self._session_factory() as session:
             eval_run = EvalRun(**eval_run_data)
@@ -134,7 +134,7 @@ class DatabaseRepository:
             await session.refresh(eval_run)
             return eval_run
 
-    async def create_eval_result(self, result_data: dict) -> EvalResult:
+    async def create_eval_result(self, result_data: dict[str, Any]) -> EvalResult:
         """Create an eval result."""
         async with self._session_factory() as session:
             result = EvalResult(**result_data)
@@ -149,7 +149,7 @@ class DatabaseRepository:
             return await session.get(EvalRun, eval_run_id)
 
     # Audit operations
-    async def create_audit_log(self, audit_data: dict) -> AuditLog:
+    async def create_audit_log(self, audit_data: dict[str, Any]) -> AuditLog:
         """Create an audit log entry."""
         async with self._session_factory() as session:
             audit = AuditLog(**audit_data)
@@ -168,7 +168,7 @@ class DatabaseRepository:
                 query = query.where(AuditLog.action == action)
             query = query.order_by(AuditLog.created_at.desc()).limit(limit)
             result = await session.execute(query)
-            return result.scalars().all()
+            return cast(List[AuditLog], result.scalars().all())
 
 
 # Global instance
