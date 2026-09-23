@@ -7,7 +7,7 @@ from ..core.errors import SentryFlowError
 security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict[str, str]:
     """Get current user from JWT token."""
     if settings.AUTH_DISABLED:
         return {"id": "demo-user", "email": "demo@sentryflow.io", "role": "ADMIN"}
