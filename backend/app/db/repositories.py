@@ -1,7 +1,6 @@
 from typing import Optional, List, Any, cast
 from sqlalchemy import select, and_
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -17,7 +16,7 @@ class DatabaseRepository:
 
     def __init__(self) -> None:
         self._engine = create_async_engine(settings.asyncpg_dsn)
-        self._session_factory = sessionmaker(
+        self._session_factory = async_sessionmaker(
             self._engine, class_=AsyncSession, expire_on_commit=False
         )
 

@@ -1,35 +1,12 @@
-app\core\ports.py:13: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:31: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
-app\core\ports.py:37: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:38: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:39: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:40: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:46: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:52: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:59: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:60: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\ports.py:61: error: Missing type arguments for generic type "dict"  [type-arg]
-app\core\logging.py:27: error: Function is missing a return type annotation  [no-untyped-def]
-app\agents\state.py:6: error: Module "app.schemas.common" has no attribute "RunStatus"  [attr-defined]
+app\core\logging.py:27: error: Name "structlog.types.ProcessorFormatter" is not defined  [name-defined]
 app\db\repositories.py:20: error: No overload variant of "sessionmaker" matches argument types "AsyncEngine", "type[AsyncSession]", "bool"  [call-overload]
 app\db\repositories.py:20: note: Possible overload variants:
 app\db\repositories.py:20: note:     def [_S: Session] sessionmaker(bind: Engine | Connection | None = ..., *, class_: type[_S], autoflush: bool = ..., expire_on_commit: bool = ..., info: dict[Any, Any] | None = ..., **kw: Any) -> sessionmaker[_S]
 app\db\repositories.py:20: note:     def [_S: Session] sessionmaker(bind: Engine | Connection | None = ..., *, autoflush: bool = ..., expire_on_commit: bool = ..., info: dict[Any, Any] | None = ..., **kw: Any) -> sessionmaker[Session]
-app\db\repositories.py:48: error: Missing type arguments for generic type "dict"  [type-arg]
 app\db\repositories.py:60: error: Returning Any from function declared to return "Run | None"  [no-any-return]
-app\db\repositories.py:62: error: Missing type arguments for generic type "dict"  [type-arg]
 app\db\repositories.py:72: error: Returning Any from function declared to return "Run | None"  [no-any-return]
-app\db\repositories.py:84: error: Returning Any from function declared to return "list[Run]"  [no-any-return]
-app\db\repositories.py:86: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:103: error: Returning Any from function declared to return "list[RunEvent]"  [no-any-return]
 app\db\repositories.py:109: error: Returning Any from function declared to return "User | None"  [no-any-return]
-app\db\repositories.py:115: error: Returning Any from function declared to return "User | None"  [no-any-return]
-app\db\repositories.py:125: error: Returning Any from function declared to return "list[KbDocument]"  [no-any-return]
-app\db\repositories.py:128: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:137: error: Missing type arguments for generic type "dict"  [type-arg]
 app\db\repositories.py:149: error: Returning Any from function declared to return "EvalRun | None"  [no-any-return]
-app\db\repositories.py:152: error: Missing type arguments for generic type "dict"  [type-arg]
-app\db\repositories.py:171: error: Returning Any from function declared to return "list[AuditLog]"  [no-any-return]
 app\db\redis.py:13: error: Function is missing a return type annotation  [no-untyped-def]
 app\db\redis.py:13: note: Use "-> None" if function does not return a value
 app\db\redis.py:33: error: Incompatible return value type (got "bytes | str | None", expected "str | None")  [return-value]
@@ -59,7 +36,7 @@ app\core\llm_gateway.py:17: error: Function is missing a return type annotation 
 app\core\llm_gateway.py:17: note: Use "-> None" if function does not return a value
 app\core\llm_gateway.py:24: error: Signature of "structured" incompatible with supertype "app.core.ports.LLMPort"  [override]
 app\core\llm_gateway.py:24: note:      Superclass:
-app\core\llm_gateway.py:24: note:          def [T] structured(self, model: type[T], messages: list[dict[Any, Any]], *, purpose: str) -> Coroutine[Any, Any, Awaitable[T]]
+app\core\llm_gateway.py:24: note:          def [T] structured(self, model: type[T], messages: list[dict[str, Any]], *, purpose: str) -> Coroutine[Any, Any, Awaitable[T]]
 app\core\llm_gateway.py:24: note:      Subclass:
 app\core\llm_gateway.py:24: note:          def [T: BaseModel] structured(self, model: type[T], messages: list[dict[Any, Any]], *, purpose: str) -> Coroutine[Any, Any, T]
 app\core\llm_gateway.py:27: error: Missing type arguments for generic type "dict"  [type-arg]
@@ -80,6 +57,7 @@ app\core\fallbacks.py:126: error: "type[Verdict]" has no attribute "NEEDS_REVIEW
 app\core\fallbacks.py:135: error: "type[Verdict]" has no attribute "FAIL"  [attr-defined]
 app\core\fallbacks.py:146: error: Function is missing a return type annotation  [no-untyped-def]
 app\core\fallbacks.py:170: error: Unexpected keyword argument "key_findings" for "FinalAnswer"  [call-arg]
+app\core\fallbacks.py:170: note: "FinalAnswer" defined in "app.schemas.answer"
 app\core\fallbacks.py:170: error: Unexpected keyword argument "next_steps" for "FinalAnswer"  [call-arg]
 app\core\circuit_breaker.py:39: error: Function is missing a type annotation  [no-untyped-def]
 app\core\circuit_breaker.py:83: error: Missing type arguments for generic type "dict"  [type-arg]
@@ -207,4 +185,4 @@ app\agents\graph.py:201: error: Call to untyped function "get_finalizer_fallback
 app\agents\graph.py:202: error: Argument 1 to "as_update" has incompatible type "dict[str, Any]"; expected "StateUpdate"  [arg-type]
 app\agents\graph.py:205: error: Missing type arguments for generic type "StateGraph"  [type-arg]
 app\agents\graph.py:225: error: Incompatible return value type (got "CompiledStateGraph[RunState, None, RunState, RunState]", expected "StateGraph[Any, None, Any, Any]")  [return-value]
-Found 194 errors in 22 files (checked 42 source files)
+Found 171 errors in 20 files (checked 42 source files)
