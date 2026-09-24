@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 class RedisAdapter:
     """Redis adapter for caching, pub/sub, and circuit breaker state."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client: Optional[redis.Redis] = None
 
     async def connect(self) -> None:
@@ -27,10 +27,11 @@ class RedisAdapter:
             self._client = None
 
     async def get(self, key: str) -> Optional[str]:
-        """Get value from Redis."""
-        if not self._client:
-            raise RuntimeError("Redis client not initialized")
-        return await self._client.get(key)
+            """Get value from Redis."""
+            if not self._client:
+                raise RuntimeError("Redis client not initialized")
+            result = await self._client.get(key)
+            return result if isinstance(result, str) else None
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """Set value in Redis."""

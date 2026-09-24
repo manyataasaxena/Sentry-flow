@@ -111,7 +111,7 @@ class DatabaseRepository:
         """Get a user by email."""
         async with self._session_factory() as session:
             result = await session.execute(select(User).where(User.email == email))
-            return cast(Optional[User], result.scalar_one_or_none())
+            return result.scalar_one_or_none()
 
     # KB operations
     async def search_kb(self, query: str, top_k: int = 10) -> List[KbDocument]:
