@@ -1,5 +1,5 @@
 import redis.asyncio as redis
-from typing import Optional, Any
+from typing import Any, Callable, Optional
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -60,15 +60,15 @@ class RedisAdapter:
             raise RuntimeError("Redis client not initialized")
         await self._client.publish(channel, message)
 
-    async def subscribe(self, channel: str, callback) -> None:
-        """Subscribe to Redis channel."""
-        if not self._client:
-            raise RuntimeError("Redis client not initialized")
-        pubsub = self._client.pubsub()
-        await pubsub.subscribe(channel)
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                await callback(message["data"])
+    async def subscribe(self, channel: str, callback: Callable[[str], Any]) -> None:
+            """Subscribe to Redis channel."""
+            if not self._client:
+                raise RuntimeError("Redis client not initialized")
+            pubsub = self._client.pubsub()
+            await pubsub.subscribe(channel)
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    await callback(message["data"])
 
     async def health_check(self) -> bool:
         """Check if Redis is reachable."""

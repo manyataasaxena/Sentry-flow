@@ -14,7 +14,7 @@ T = TypeVar("T", bound=BaseModel)
 class FakeLLM(LLMPort):
     """Deterministic fake LLM for testing and demo mode."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._responses: dict[str, Any] = {}
 
     def register_response(self, purpose: str, response: Any) -> None:

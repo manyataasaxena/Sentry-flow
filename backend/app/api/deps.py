@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -19,6 +21,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return {"id": "user-id", "email": "user@example.com", "role": "VIEWER"}
 
 
-async def get_settings() -> dict:
+async def get_settings() -> dict[str, Any]:
     """Get application settings."""
     return {"mock_llm": settings.MOCK_LLM, "environment": settings.ENVIRONMENT}

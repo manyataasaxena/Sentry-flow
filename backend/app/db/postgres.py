@@ -1,7 +1,7 @@
-import asyncpg  # type: ignore[import-untyped]
-from asyncpg import Pool  # type: ignore[import-untyped]
-from asyncpg.pool import PoolConnectionProxy  # type: ignore[import-untyped]
-from typing import Any, Optional
+import asyncpg
+from asyncpg import Pool
+from asyncpg.pool import PoolConnectionProxy
+from typing import Any, Optional, cast
 
 from ..core.config import settings
 
@@ -42,14 +42,16 @@ class PostgresAdapter:
         await self._pool.release(conn)
 
     async def execute(self, query: str, *args: Any) -> list[dict[str, Any]]:
-        """Execute a query and return results as list of dicts."""
-        async with await self.get_connection() as conn:
-            return await conn.fetch(query, *args)
+            """Execute a query and return results as list of dicts."""
+            async with await self.get_connection() as conn:
+                result = await conn.fetch(query, *args)
+                return [dict(row) for row in result]
 
     async def execute_one(self, query: str, *args: Any) -> Optional[dict[str, Any]]:
-        """Execute a query and return a single result."""
-        async with await self.get_connection() as conn:
-            return await conn.fetchrow(query, *args)
+            """Execute a query and return a single result."""
+            async with await self.get_connection() as conn:
+                result = await conn.fetchrow(query, *args)
+                return dict(result) if result else None
 
     async def execute_script(self, script: str) -> None:
         """Execute a SQL script."""
@@ -67,4 +69,4 @@ class PostgresAdapter:
 
 
 # Global instance
-postgres = PostgresAdapter()  # type: ignore[no-untyped-call]
+postgres = PostgresAdapter()
