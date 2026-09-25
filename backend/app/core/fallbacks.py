@@ -7,6 +7,7 @@ from ..schemas.plan import Plan, PlanStep
 from ..schemas.tools import WebSearchArgs, ToolArgs, ToolResult, ToolStatus
 from ..schemas.verification import VerificationReport, Verdict
 from ..schemas.answer import FinalAnswer, Citation
+from ..schemas.common import RiskLevel
 
 logger = get_logger(__name__)
 
@@ -56,7 +57,8 @@ def rule_based_plan(intent: IntentClassification) -> Plan:
         strategy_summary = "No safe plan could be generated"
         clarification_question = "Could you clarify your request?"
 
-    risk = "low" if intent.confidence >= 0.7 else "medium" if intent.confidence >= 0.5 else "high"
+    risk_str = "low" if intent.confidence >= 0.7 else "medium" if intent.confidence >= 0.5 else "high"
+    risk = RiskLevel(risk_str)
 
     return Plan(
         intent=intent,
@@ -73,7 +75,7 @@ def degraded_response(message: str) -> str:
     return f"[Degraded mode] {message}. Some features may be limited."
 
 
-def get_planner_fallback():
+def get_planner_fallback() -> "_PlannerFallback":
     """Get the planner fallback instance."""
     return _PlannerFallback()
 
@@ -108,7 +110,7 @@ class _PlannerFallback:
         return rule_based_plan(intent)
 
 
-def get_verifier_fallback():
+def get_verifier_fallback() -> "_VerifierFallback":
     """Get the verifier fallback instance."""
     return _VerifierFallback()
 
@@ -123,7 +125,7 @@ class _VerifierFallback:
         
         if total_results == 0:
             score = 0.0
-            verdict = Verdict.NEEDS_REVIEW
+            verdict = Verdict.REVISE
         elif successful_results == total_results:
             score = 100.0
             verdict = Verdict.PASS
@@ -132,7 +134,7 @@ class _VerifierFallback:
             verdict = Verdict.PASS
         else:
             score = 30.0
-            verdict = Verdict.FAIL
+            verdict = Verdict.BLOCK
             
         return VerificationReport(
             verdict=verdict,
@@ -143,7 +145,7 @@ class _VerifierFallback:
         )
 
 
-def get_finalizer_fallback():
+def get_finalizer_fallback() -> "_FinalizerFallback":
     """Get the finalizer fallback instance."""
     return _FinalizerFallback()
 
@@ -169,8 +171,6 @@ class _FinalizerFallback:
             
         return FinalAnswer(
             answer=answer,
-            key_findings=[f"Executed {successful_results} steps"],
             confidence=0.5 if successful_results > 0 else 0.2,
             citations=[],
-            next_steps=["Review the results and consider alternative approaches"]
         )

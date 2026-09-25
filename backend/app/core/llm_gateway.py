@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, Optional, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, FieldInfo
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -22,38 +22,38 @@ class FakeLLM(LLMPort):
         self._responses[purpose] = response
 
     async def structured(
-        self,
-        model: type[T],
-        messages: list[dict],
-        *,
-        purpose: str,
-    ) -> T:
-        """Return a deterministic response based on purpose."""
-        if purpose in self._responses:
-            return model(**self._responses[purpose])
-
-        # Return default response based on model type
-        if model.__name__ == "IntentClassification":
-            return model(intent="research", confidence=0.9, rationale="Default research intent")
-        elif model.__name__ == "Plan":
-            return model(
-                intent=model.__fields__["intent"].default,
-                steps=[],
-                strategy_summary="Default plan",
-                risk="low",
-            )
-        elif model.__name__ == "FinalAnswer":
-            return model(answer="Default answer", citations=[], confidence=0.8)
-        elif model.__name__ == "VerificationReport":
-            return model(mode="output", verdict="pass", score=0.9, checks=[])
-        else:
-            return model()
+            self,
+            model: type[T],
+            messages: list[dict[str, Any]],
+            *,
+            purpose: str,
+        ) -> T:
+            """Return a deterministic response based on purpose."""
+            if purpose in self._responses:
+                return model(**self._responses[purpose])
+    
+            # Return default response based on model type
+            if model.__name__ == "IntentClassification":
+                return model(intent="research", confidence=0.9, rationale="Default research intent")
+            elif model.__name__ == "Plan":
+                return model(
+                    intent=model.__fields__["intent"].default,
+                    steps=[],
+                    strategy_summary="Default plan",
+                    risk="low",
+                )
+            elif model.__name__ == "FinalAnswer":
+                return model(answer="Default answer", citations=[], confidence=0.8)
+            elif model.__name__ == "VerificationReport":
+                return model(mode="output", verdict="pass", score=0.9, checks=[])
+            else:
+                return model()
 
 
 class LLMGateway:
     """LLM gateway that selects the appropriate provider."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._fake_llm = FakeLLM()
         self._primary: Optional[LLMPort] = None
         self._fallback: Optional[LLMPort] = None
@@ -83,22 +83,22 @@ class LLMGateway:
         return self._fallback
 
     async def structured(
-        self,
-        model: type[T],
-        messages: list[dict],
-        *,
-        purpose: str,
-    ) -> T:
-        """Call LLM with fallback chain."""
-        try:
-            return await self.primary.structured(model, messages, purpose=purpose)
-        except Exception as e:
-            logger.warning(f"Primary LLM failed, trying fallback: {e}")
+            self,
+            model: type[T],
+            messages: list[dict[str, Any]],
+            *,
+            purpose: str,
+        ) -> T:
+            """Call LLM with fallback chain."""
             try:
-                return await self.fallback.structured(model, messages, purpose=purpose)
-            except Exception as fallback_error:
-                logger.error(f"Fallback LLM also failed: {fallback_error}")
-                raise PermanentError(f"LLM call failed: {e}", error_info={"code": "LLM_FAILURE"})
+                return await self.primary.structured(model, messages, purpose=purpose)
+            except Exception as e:
+                logger.warning(f"Primary LLM failed, trying fallback: {e}")
+                try:
+                    return await self.fallback.structured(model, messages, purpose=purpose)
+                except Exception as fallback_error:
+                    logger.error(f"Fallback LLM also failed: {fallback_error}")
+                    raise PermanentError(f"LLM call failed: {e}", error_info={"code": "LLM_FAILURE"})
 
 
 # Global instance

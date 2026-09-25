@@ -9,12 +9,12 @@ class LLMPort(Protocol):
     """Protocol for LLM providers."""
 
     async def structured(
-        self,
-        model: type[T],
-        messages: list[dict[str, Any]],
-        *,
-        purpose: str,
-    ) -> Awaitable[T]: ...
+            self,
+            model: type[T],
+            messages: list[dict[str, Any]],
+            *,
+            purpose: str,
+        ) -> T: ...
 
 
 class CachePort(Protocol):

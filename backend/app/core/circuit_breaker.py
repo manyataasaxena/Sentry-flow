@@ -1,7 +1,7 @@
 import asyncio
 import time
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, Any
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -18,7 +18,7 @@ class CircuitState(StrEnum):
 class CircuitBreaker:
     """Async circuit breaker with Redis state sharing."""
 
-    def __init__(self, dependency: str, failure_threshold: int = 5, recovery_timeout: int = 30):
+    def __init__(self, dependency: str, failure_threshold: int = 5, recovery_timeout: int = 30) -> None:
         self.dependency = dependency
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -80,12 +80,12 @@ class CircuitBreaker:
                 self._opened_at = time.time()
                 logger.warning(f"Circuit breaker {self.dependency} opened after {self._failure_count} failures")
 
-    async def get_status(self) -> dict:
-        """Get circuit breaker status."""
-        return {
-            "dependency": self.dependency,
-            "state": self._state.value,
-            "failure_count": self._failure_count,
-            "last_failure_at": self._last_failure_at,
-            "opens_at": self._opened_at,
-        }
+    async def get_status(self) -> dict[str, Any]:
+            """Get circuit breaker status."""
+            return {
+                "dependency": self.dependency,
+                "state": self._state.value,
+                "failure_count": self._failure_count,
+                "last_failure_at": self._last_failure_at,
+                "opens_at": self._opened_at,
+            }

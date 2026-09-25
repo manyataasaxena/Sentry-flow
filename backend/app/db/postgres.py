@@ -1,6 +1,6 @@
-import asyncpg
+import asyncpg  # type: ignore[import-untyped]
 from asyncpg import Pool
-from asyncpg.pool import PoolConnectionProxy
+from asyncpg.pool import PoolConnectionProxy  # type: ignore[import-untyped]
 from typing import Any, Optional, cast
 
 from ..core.config import settings
