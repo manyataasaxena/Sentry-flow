@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Optional, Any
+from typing import TypeVar, Generic, Optional, Any, Awaitable
 from pydantic import BaseModel, FieldInfo
 
 from ..core.config import settings
@@ -33,15 +33,16 @@ class FakeLLM(LLMPort):
                 return model(**self._responses[purpose])
     
             # Return default response based on model type
-            if model.__name__ == "IntentClassification":
-                return model(intent="research", confidence=0.9, rationale="Default research intent")
-            elif model.__name__ == "Plan":
-                return model(
-                    intent=model.__fields__["intent"].default,
-                    steps=[],
-                    strategy_summary="Default plan",
-                    risk="low",
-                )
+                        if model.__name__ == "IntentClassification":
+                            return model(intent="research", confidence=0.9, rationale="Default research intent")
+                        elif model.__name__ == "Plan":
+                            model_fields: dict[str, FieldInfo] = model.model_fields
+                            return model(
+                                intent=model_fields["intent"].default,
+                                steps=[],
+                                strategy_summary="Default plan",
+                                risk="low",
+                            )
             elif model.__name__ == "FinalAnswer":
                 return model(answer="Default answer", citations=[], confidence=0.8)
             elif model.__name__ == "VerificationReport":
@@ -54,9 +55,9 @@ class LLMGateway:
     """LLM gateway that selects the appropriate provider."""
 
     def __init__(self) -> None:
-        self._fake_llm = FakeLLM()
-        self._primary: Optional[LLMPort] = None
-        self._fallback: Optional[LLMPort] = None
+            self._fake_llm: Optional[LLMPort] = FakeLLM()
+            self._primary: Optional[LLMPort] = None
+            self._fallback: Optional[LLMPort] = None
 
         if settings.MOCK_LLM:
             self._primary = self._fake_llm
@@ -97,9 +98,10 @@ class LLMGateway:
                 try:
                     return await self.fallback.structured(model, messages, purpose=purpose)
                 except Exception as fallback_error:
-                    logger.error(f"Fallback LLM also failed: {fallback_error}")
-                    raise PermanentError(f"LLM call failed: {e}", error_info={"code": "LLM_FAILURE"})
+                                logger.error(f"Fallback LLM also failed: {fallback_error}")
+                                error_info: dict[str, Any] = {"code": "LLM_FAILURE"}
+                                raise PermanentError(f"LLM call failed: {e}", error_info=error_info)
 
 
 # Global instance
-llm_gateway = LLMGateway()
+llm_gateway: LLMGateway = LLMGateway()

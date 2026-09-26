@@ -18,7 +18,7 @@ async def websocket_endpoint(
     websocket: WebSocket,
     run_id: str,
     last_seq: Optional[int] = Query(None),
-):
+) -> None:
     """WebSocket endpoint for real-time run events."""
     await websocket.accept()
 

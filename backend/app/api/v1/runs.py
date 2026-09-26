@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -12,16 +12,16 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 
 # In-memory store for demo (would be replaced by database in production)
-_runs: dict[str, dict] = {}
-_events: dict[str, list[dict]] = {}
+_runs: dict[str, dict[str, Any]] = {}
+_events: dict[str, list[dict[str, Any]]] = {}
 
 
 @router.post("", response_model=RunSummary, status_code=202)
 async def create_run(
     request: CreateRunRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     idempotency_key: Optional[str] = Query(None, alias="Idempotency-Key"),
-):
+) -> RunSummary:
     """Create a new run."""
     run_id = f"run-{len(_runs) + 1}"
 
@@ -50,8 +50,8 @@ async def create_run(
 async def list_runs(
     user_id: Optional[str] = None,
     status: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
-):
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> List[RunSummary]:
     """List runs with optional filters."""
     runs = []
     for run_id, run_data in _runs.items():
@@ -64,7 +64,7 @@ async def list_runs(
 
 
 @router.get("/{run_id}", response_model=RunDetail)
-async def get_run(run_id: str, current_user: dict = Depends(get_current_user)):
+async def get_run(run_id: str, current_user: dict[str, Any] = Depends(get_current_user)) -> RunDetail:
     """Get run details."""
     run_data = _runs.get(run_id)
     if not run_data:
@@ -74,7 +74,7 @@ async def get_run(run_id: str, current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/{run_id}/events")
-async def get_run_events(run_id: str, after_seq: Optional[int] = None):
+async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> dict[str, list[dict[str, Any]]]:
     """Get run events for replay."""
     events = _events.get(run_id, [])
     if after_seq:
