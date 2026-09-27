@@ -82,8 +82,8 @@ async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> dict[s
     return {"events": events}
 
 
-@router.post("/{run_id}/approve", response_model=dict)
-async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dict = Depends(get_current_user)):
+@router.post("/{run_id}/approve", response_model=dict[str, str])
+async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dict = Depends(get_current_user)) -> dict[str, str]:
     """Approve or reject a run."""
     run_data = _runs.get(run_id)
     if not run_data:
@@ -95,8 +95,8 @@ async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dic
     return {"status": "approved" if decision.approved else "rejected"}
 
 
-@router.post("/{run_id}/cancel", response_model=dict)
-async def cancel_run(run_id: str, current_user: dict = Depends(get_current_user)):
+@router.post("/{run_id}/cancel", response_model=dict[str, str])
+async def cancel_run(run_id: str, current_user: dict = Depends(get_current_user)) -> dict[str, str]:
     """Cancel a running run."""
     run_data = _runs.get(run_id)
     if not run_data:

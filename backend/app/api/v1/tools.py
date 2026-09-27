@@ -7,6 +7,8 @@ from ...core.logging import get_logger
 
 logger = get_logger(__name__)
 
+__all__ = ["RiskLevel"]
+
 router = APIRouter(prefix="/api/v1/tools", tags=["tools"])
 
 # Demo tool specs
