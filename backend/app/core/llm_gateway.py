@@ -43,12 +43,12 @@ class FakeLLM(LLMPort):
                                 strategy_summary="Default plan",
                                 risk="low",
                             )
-            elif model.__name__ == "FinalAnswer":
-                return model(answer="Default answer", citations=[], confidence=0.8)
-            elif model.__name__ == "VerificationReport":
-                return model(mode="output", verdict="pass", score=0.9, checks=[])
-            else:
-                return model()
+                        elif model.__name__ == "FinalAnswer":
+                            return model(answer="Default answer", citations=[], confidence=0.8)
+                        elif model.__name__ == "VerificationReport":
+                            return model(mode="output", verdict="pass", score=0.9, checks=[])
+                        else:
+                            return model()
 
 
 class LLMGateway:
