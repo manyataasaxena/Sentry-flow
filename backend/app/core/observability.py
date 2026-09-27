@@ -16,14 +16,14 @@ def redact(text: str) -> str:
 
     # Redact API keys
     import re
-    text = re.sub(r'api[_-]?key[\"\\']?\\s*[:=]\\s*[\"\\']?[^\\s\"\\',]+', 'api_key=***REDACTED***', text, flags=re.IGNORECASE)
-    text = re.sub(r'Bearer\\s+[A-Za-z0-9._-]+', 'Bearer ***REDACTED***', text)
+    text = re.sub(r'api[_-]?key["\']?\s*[:=]\s*["\']?[^\s"\',]+', 'api_key=***REDACTED***', text, flags=re.IGNORECASE)
+    text = re.sub(r'Bearer\s+[A-Za-z0-9._-]+', 'Bearer ***REDACTED***', text)
 
     # Redact emails
-    text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}', '***REDACTED_EMAIL***', text)
+    text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '***REDACTED_EMAIL***', text)
 
     # Redact phone numbers
-    text = re.sub(r'\\+?[1-9]\\d{1,14}', '***REDACTED_PHONE***', text)
+    text = re.sub(r'\+?[1-9]\d{1,14}', '***REDACTED_PHONE***', text)
 
     return text
 
