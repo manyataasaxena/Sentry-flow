@@ -2,7 +2,7 @@ from typing import Protocol, TypeVar, Awaitable, Optional, Any, Callable
 
 from pydantic import BaseModel
 
-T = TypeVar("T")
+T = TypeVar("T", bound=BaseModel)
 
 
 class LLMPort(Protocol):

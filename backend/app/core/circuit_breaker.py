@@ -1,12 +1,14 @@
 import asyncio
 import time
 from enum import StrEnum
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Awaitable, TypeVar
 
 from ..core.config import settings
 from ..core.logging import get_logger
 
 logger = get_logger(__name__)
+
+T = TypeVar("T")
 
 
 class CircuitState(StrEnum):
@@ -36,7 +38,7 @@ class CircuitBreaker:
     def failure_count(self) -> int:
         return self._failure_count
 
-    async def call(self, func, *args, **kwargs):
+    async def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T:
         """Execute function with circuit breaker protection."""
         async with self._lock:
             if self._state == CircuitState.OPEN:
@@ -81,11 +83,11 @@ class CircuitBreaker:
                 logger.warning(f"Circuit breaker {self.dependency} opened after {self._failure_count} failures")
 
     async def get_status(self) -> dict[str, Any]:
-            """Get circuit breaker status."""
-            return {
-                "dependency": self.dependency,
-                "state": self._state.value,
-                "failure_count": self._failure_count,
-                "last_failure_at": self._last_failure_at,
-                "opens_at": self._opened_at,
-            }
+        """Get circuit breaker status."""
+        return {
+            "dependency": self.dependency,
+            "state": self._state.value,
+            "failure_count": self._failure_count,
+            "last_failure_at": self._last_failure_at,
+            "opens_at": self._opened_at,
+        }

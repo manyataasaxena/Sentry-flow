@@ -36,7 +36,7 @@ class FakeLLM(LLMPort):
         if model.__name__ == "IntentClassification":
             return model(intent="research", confidence=0.9, rationale="Default research intent")
         elif model.__name__ == "Plan":
-            model_fields: dict[str, FieldInfo] = model.model_fields
+            model_fields: dict[str, Any] = model.model_fields
             return model(
                 intent=model_fields["intent"].default,
                 steps=[],

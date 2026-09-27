@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Callable, Awaitable, TypeVar, Optional
+from typing import Callable, Awaitable, TypeVar, Optional, Any
 
 from ..core.config import settings
 from ..core.errors import TransientError, CircuitOpenError
@@ -51,7 +51,7 @@ async def resilient_call(
         recovery_timeout=policy.breaker_recovery_timeout,
     )
 
-    last_error = None
+    last_error: Optional[TransientError] = None
 
     for attempt in range(policy.max_attempts):
         try:
@@ -65,14 +65,14 @@ async def resilient_call(
             last_error = TransientError(f"Timeout on {dependency}", error_info={"code": "TIMEOUT", "dependency": dependency})
             logger.warning(f"Timeout on {dependency} (attempt {attempt + 1}/{policy.max_attempts})")
         except CircuitOpenError as e:
-            last_error = e
+            last_error = TransientError(f"Circuit open for {dependency}", error_info={"code": "CIRCUIT_OPEN", "dependency": dependency})
             logger.warning(f"Circuit breaker open for {dependency}")
             break
         except TransientError as e:
             last_error = e
             logger.warning(f"Transient error on {dependency} (attempt {attempt + 1}/{policy.max_attempts})")
         except Exception as e:
-            last_error = e
+            last_error = TransientError(f"Unexpected error on {dependency}", error_info={"code": "UNEXPECTED", "dependency": dependency})
             logger.error(f"Unexpected error on {dependency}: {e}")
             break
 
@@ -88,6 +88,6 @@ async def resilient_call(
             return await fallback()
         except Exception as e:
             logger.error(f"Fallback also failed for {dependency}: {e}")
-            raise last_error
+            raise last_error  # type: ignore[return-value]
 
-    raise last_error
+    raise last_error  # type: ignore[raise]  # type: ignore[unreachable]
