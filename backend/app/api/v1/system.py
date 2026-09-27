@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..deps import get_current_user
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
 # Demo breaker states
-_breakers: dict[str, dict] = {
+_breakers: dict[str, dict[str, Any]] = {
     "llm-primary": {"state": "closed", "failure_count": 0, "last_failure_at": None, "opens_at": None},
     "llm-fallback": {"state": "closed", "failure_count": 0, "last_failure_at": None, "opens_at": None},
     "web_search": {"state": "closed", "failure_count": 0, "last_failure_at": None, "opens_at": None},
@@ -21,7 +21,7 @@ _chaos_enabled = False
 
 
 @router.get("/health", response_model=HealthReport)
-async def health_check(current_user: dict = Depends(get_current_user)):
+async def health_check(current_user: dict[str, Any] = Depends(get_current_user)) -> HealthReport:
     """Get system health report."""
     return HealthReport(
         status="ok",
@@ -34,13 +34,13 @@ async def health_check(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/breakers", response_model=List[BreakerStatus])
-async def list_breakers(current_user: dict = Depends(get_current_user)):
+async def list_breakers(current_user: dict[str, Any] = Depends(get_current_user)) -> List[BreakerStatus]:
     """List circuit breaker statuses."""
     return [BreakerStatus(**v) for v in _breakers.values()]
 
 
 @router.post("/chaos")
-async def toggle_chaos(current_user: dict = Depends(get_current_user)):
+async def toggle_chaos(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """Toggle chaos mode (demo only)."""
     global _chaos_enabled
     _chaos_enabled = not _chaos_enabled
@@ -56,7 +56,7 @@ async def toggle_chaos(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/metrics/summary")
-async def metrics_summary(current_user: dict = Depends(get_current_user)):
+async def metrics_summary(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """Get system metrics summary."""
     return {
         "total_runs": 0,

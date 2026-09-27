@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from typing import Any, Dict
 
 from ..deps import get_current_user
 from ...core.config import settings
@@ -21,7 +22,7 @@ class LogoutRequest(BaseModel):
 
 
 @router.post("/login")
-async def login(request: LoginRequest):
+async def login(request: LoginRequest) -> Dict[str, Any]:
     """Login with email and password."""
     if settings.AUTH_DISABLED:
         logger.info("Auth disabled, auto-login")
@@ -32,12 +33,12 @@ async def login(request: LoginRequest):
 
 
 @router.post("/logout")
-async def logout():
+async def logout() -> Dict[str, Any]:
     """Logout."""
     return {"message": "Logged out"}
 
 
 @router.get("/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
+async def get_me(current_user: dict = Depends(get_current_user)) -> dict:
     """Get current user."""
     return current_user

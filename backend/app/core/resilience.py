@@ -88,6 +88,10 @@ async def resilient_call(
             return await fallback()
         except Exception as e:
             logger.error(f"Fallback also failed for {dependency}: {e}")
-            raise last_error  # type: ignore[return-value]
+            if last_error is not None:
+                raise last_error
+            raise TransientError(f"Fallback failed for {dependency}", error_info={"code": "FALLBACK_FAILED", "dependency": dependency})
 
-    raise last_error  # type: ignore[raise]  # type: ignore[unreachable]
+    if last_error is not None:
+        raise last_error
+    raise TransientError(f"LLM call failed for {dependency}", error_info={"code": "NO_ERROR", "dependency": dependency})

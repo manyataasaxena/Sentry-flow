@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..deps import get_current_user
@@ -10,12 +10,12 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/evals", tags=["evals"])
 
 # Demo eval data
-_eval_runs: dict[str, dict] = {}
-_eval_results: list[dict] = []
+_eval_runs: dict[str, dict[str, Any]] = {}
+_eval_results: list[dict[str, Any]] = []
 
 
-@router.post("/run", response_model=dict, status_code=202)
-async def run_evals(current_user: dict = Depends(get_current_user)):
+@router.post("/run", response_model=dict[str, Any], status_code=202)
+async def run_evals(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """Start adversarial evaluation suite."""
     eval_id = f"eval-{len(_eval_runs) + 1}"
     _eval_runs[eval_id] = {
@@ -31,14 +31,14 @@ async def run_evals(current_user: dict = Depends(get_current_user)):
     return {"eval_run_id": eval_id, "status": "running"}
 
 
-@router.get("", response_model=List[dict])
-async def list_evals(current_user: dict = Depends(get_current_user)):
+@router.get("", response_model=List[dict[str, Any]])
+async def list_evals(current_user: dict[str, Any] = Depends(get_current_user)) -> List[dict[str, Any]]:
     """List evaluation runs."""
     return list(_eval_runs.values())
 
 
 @router.get("/{eval_id}", response_model=EvalReport)
-async def get_eval(eval_id: str, current_user: dict = Depends(get_current_user)):
+async def get_eval(eval_id: str, current_user: dict[str, Any] = Depends(get_current_user)) -> EvalReport:
     """Get evaluation report."""
     eval_data = _eval_runs.get(eval_id)
     if not eval_data:
