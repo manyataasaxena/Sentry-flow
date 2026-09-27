@@ -1,0 +1,2 @@
+mypy_errors.txt:1: error: Unexpected character after line continuation character  [syntax]
+Found 1 error in 1 file (errors prevented further checking)
