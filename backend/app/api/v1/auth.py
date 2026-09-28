@@ -39,6 +39,6 @@ async def logout() -> Dict[str, str]:
 
 
 @router.get("/me")
-async def get_me(current_user: Dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_me(current_user: dict[str, object] = Depends(get_current_user)) -> Dict[str, Any]:
     """Get current user."""
     return current_user

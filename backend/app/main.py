@@ -65,7 +65,7 @@ app.include_router(ws_router)
 
 
 @app.exception_handler(SentryFlowError)
-async def _handle_sentryflow_error(_request: object, exc: SentryFlowError):
+async def _handle_sentryflow_error(_request: object, exc: SentryFlowError) -> JSONResponse:
     from fastapi.responses import JSONResponse
 
     return JSONResponse(

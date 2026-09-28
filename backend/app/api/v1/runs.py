@@ -12,14 +12,14 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 
 # In-memory store for demo (would be replaced by database in production)
-_runs: Dict[str, Dict[str, Any]] = {}
-_events: Dict[str, List[Dict[str, Any]]] = {}
+_runs: Dict[str, Dict[str, object]] = {}
+_events: Dict[str, List[Dict[str, object]]] = {}
 
 
 @router.post("", response_model=RunSummary, status_code=202)
 async def create_run(
     request: CreateRunRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, object] = Depends(get_current_user),
     idempotency_key: Optional[str] = Query(None, alias="Idempotency-Key"),
 ) -> RunSummary:
     """Create a new run."""
@@ -50,7 +50,7 @@ async def create_run(
 async def list_runs(
     user_id: Optional[str] = None,
     status: Optional[str] = None,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, object] = Depends(get_current_user),
 ) -> List[RunSummary]:
     """List runs with optional filters."""
     runs = []
@@ -64,7 +64,7 @@ async def list_runs(
 
 
 @router.get("/{run_id}", response_model=RunDetail)
-async def get_run(run_id: str, current_user: Dict[str, Any] = Depends(get_current_user)) -> RunDetail:
+async def get_run(run_id: str, current_user: dict[str, object] = Depends(get_current_user)) -> RunDetail:
     """Get run details."""
     run_data = _runs.get(run_id)
     if not run_data:

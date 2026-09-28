@@ -9,16 +9,18 @@ from ..core.fallbacks import get_planner_fallback, get_verifier_fallback, get_fi
 from ..core.logging import get_logger
 from ..schemas.intent import IntentClassification
 from ..schemas.plan import Plan
-from ..schemas.tools import ToolResult, ToolStatus, ToolName
+from ..schemas.tools import ToolResult, ToolStatus, ToolName, SearchOutput, FetchOutput, CalcOutput, KbOutput, WebhookOutput
 from ..schemas.verification import VerificationReport
 from ..schemas.answer import FinalAnswer
+from ..schemas.run import RunStatus, ApprovalDecision
+from ..schemas.common import RiskLevel, ErrorInfo
 from typing import Optional, List, Dict, Any, Sequence
 
 logger = get_logger(__name__)
 
 
 @observe(name="intake_guard")
-async def intake_guard(state: RunState) -> dict:
+async def intake_guard(state: RunState) -> Dict[str, object]:
     """Validate and classify the user task."""
     try:
         response = await llm_gateway.structured(
@@ -37,7 +39,7 @@ async def intake_guard(state: RunState) -> dict:
 
 
 @observe(name="planner")
-async def planner(state: RunState) -> dict:
+async def planner(state: RunState) -> Dict[str, object]:
     """Create an execution plan based on the classified intent."""
     if not state.intent:
         fallback = get_planner_fallback()
@@ -60,22 +62,22 @@ async def planner(state: RunState) -> dict:
 
 
 @observe(name="approval_gate")
-async def approval_gate(state: RunState) -> dict:
+async def approval_gate(state: RunState) -> Dict[str, object]:
     """Review and approve the plan before execution."""
     if not state.plan or not state.plan.steps:
-        return as_update(StateUpdate(status="blocked", approval={"approved": False, "note": "No plan to approve"}))
+        return as_update(StateUpdate(status=RunStatus.BLOCKED, approval=ApprovalDecision(approved=False, note="No plan to approve")))
 
-    high_risk_steps = [s for s in state.plan.steps if s.risk == "high"]
+    high_risk_steps = [s for s in state.plan.steps if s.risk == RiskLevel.HIGH]
     if high_risk_steps:
-        return as_update(StateUpdate(approval={"approved": True, "note": f"Auto-approved with {len(high_risk_steps)} high-risk steps"}))
-    return as_update(StateUpdate(approval={"approved": True, "note": "Plan approved automatically"}))
+        return as_update(StateUpdate(approval=ApprovalDecision(approved=True, note=f"Auto-approved with {len(high_risk_steps)} high-risk steps")))
+    return as_update(StateUpdate(approval=ApprovalDecision(approved=True, note="Plan approved automatically")))
 
 
 @observe(name="worker")
-async def worker(state: RunState) -> dict:
+async def worker(state: RunState) -> Dict[str, object]:
     """Execute the approved plan steps."""
     if not state.plan or not state.plan.steps:
-        return as_update(StateUpdate(status="blocked", results=[]))
+        return as_update(StateUpdate(status=RunStatus.BLOCKED, results=[]))
 
     results: List[ToolResult] = []
     for step in state.plan.steps:
@@ -86,10 +88,10 @@ async def worker(state: RunState) -> dict:
             logger.error(f"Step {step.step_id} failed", error=str(e))
             results.append(ToolResult(
                 step_id=step.step_id,
-                tool=step.args.tool if hasattr(step.args, "tool") else ToolName.WEB_SEARCH,
+                tool=ToolName.WEB_SEARCH,
                 status=ToolStatus.FAILED,
                 output=None,
-                error={"code": "EXECUTION_ERROR", "message": str(e)},
+                error=ErrorInfo(code="EXECUTION_ERROR", message=str(e)),
                 latency_ms=0,
                 cache_hit=False,
             ))
@@ -97,7 +99,7 @@ async def worker(state: RunState) -> dict:
     return as_update(StateUpdate(results=results))
 
 
-async def _execute_step(step) -> ToolResult:
+async def _execute_step(step: Any) -> ToolResult:
     """Execute a single plan step."""
     tool_name = step.args.tool if hasattr(step.args, "tool") else ToolName.WEB_SEARCH
     args = step.args.model_dump() if hasattr(step.args, "model_dump") else {}
@@ -108,7 +110,7 @@ async def _execute_step(step) -> ToolResult:
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output={"kind": "search", "hits": []},
+            output=SearchOutput(hits=[]),
             latency_ms=100,
             cache_hit=False,
         )
@@ -117,7 +119,7 @@ async def _execute_step(step) -> ToolResult:
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output={"kind": "fetch", "url": args.get("url", ""), "text": "sample", "truncated": False},
+            output=FetchOutput(url=args.get("url", ""), text="sample", truncated=False),
             latency_ms=200,
             cache_hit=False,
         )
@@ -128,7 +130,7 @@ async def _execute_step(step) -> ToolResult:
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output={"kind": "calc", "value": float(result)},
+            output=CalcOutput(value=float(result)),
             latency_ms=50,
             cache_hit=False,
         )
@@ -137,7 +139,7 @@ async def _execute_step(step) -> ToolResult:
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output={"kind": "kb", "passages": []},
+            output=KbOutput(passages=[]),
             latency_ms=150,
             cache_hit=False,
         )
@@ -146,7 +148,7 @@ async def _execute_step(step) -> ToolResult:
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output={"kind": "webhook", "status_code": 200, "summary": "success"},
+            output=WebhookOutput(status_code=200, summary="success"),
             latency_ms=300,
             cache_hit=False,
         )
@@ -162,7 +164,7 @@ async def _execute_step(step) -> ToolResult:
 
 
 @observe(name="verifier")
-async def verifier(state: RunState) -> dict:
+async def verifier(state: RunState) -> Dict[str, object]:
     """Verify the results and provide feedback."""
     try:
         response = await llm_gateway.structured(
@@ -181,7 +183,7 @@ async def verifier(state: RunState) -> dict:
 
 
 @observe(name="finalize")
-async def finalize(state: RunState) -> dict:
+async def finalize(state: RunState) -> Dict[str, object]:
     """Create the final answer based on all results."""
     try:
         response = await llm_gateway.structured(
@@ -192,11 +194,11 @@ async def finalize(state: RunState) -> dict:
             ],
             purpose="final_answer",
         )
-        return as_update(StateUpdate(draft=response, status="completed"))
+        return as_update(StateUpdate(draft=response, status=RunStatus.COMPLETED))
     except Exception as e:
         logger.error("Finalization failed", error=str(e))
         fallback = get_finalizer_fallback()
-        return as_update(StateUpdate(draft=fallback.create_final_answer(state.task, state.results), status="completed"))
+        return as_update(StateUpdate(draft=fallback.create_final_answer(state.task, state.results), status=RunStatus.COMPLETED))
 
 
 def create_agent_graph() -> StateGraph[RunState, None, RunState, RunState]:

@@ -2,7 +2,8 @@ from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..deps import get_current_user
-from ...schemas.tools import ToolSpec, ToolName, RiskLevel
+from ...schemas.tools import ToolSpec, ToolName
+from ...schemas.common import RiskLevel
 from ...core.logging import get_logger
 
 logger = get_logger(__name__)
