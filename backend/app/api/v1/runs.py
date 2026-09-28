@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from ..deps import get_current_user
-from ...schemas.run import CreateRunRequest, RunSummary, RunDetail, ErrorResponse, ApprovalDecision, RunStatus, BudgetUsage
+from ...schemas.run import CreateRunRequest, RunSummary, RunDetail, ErrorResponse, ApprovalDecision, RunStatus
+from ...schemas.common import BudgetUsage
 from ...schemas.events import RunEvent
 from ...core.logging import get_logger
 
