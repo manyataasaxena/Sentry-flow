@@ -19,7 +19,7 @@ _audit_logs: list[dict[str, Any]] = [
 async def list_audit_logs(
     actor_id: Optional[str] = None,
     action: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> List[dict[str, Any]]:
     """List audit logs."""
     logs = _audit_logs
