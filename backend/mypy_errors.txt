@@ -1,5 +1,4 @@
 app\api\v1\tools.py:5: error: Module "app.schemas.tools" does not explicitly export attribute "RiskLevel"  [attr-defined]
-app\api\v1\audit.py:22: error: Missing type arguments for generic type "dict"  [type-arg]
 app\api\v1\runs.py:86: error: Missing type arguments for generic type "Dict"  [type-arg]
 app\api\v1\runs.py:99: error: Missing type arguments for generic type "Dict"  [type-arg]
 app\api\v1\auth.py:42: error: Missing type arguments for generic type "Dict"  [type-arg]
@@ -27,4 +26,4 @@ app\agents\graph.py:195: error: Argument "status" to "StateUpdate" has incompati
 app\agents\graph.py:199: error: Argument "status" to "StateUpdate" has incompatible type "str"; expected "RunStatus | None"  [arg-type]
 app\agents\graph.py:222: error: Incompatible return value type (got "CompiledStateGraph[RunState, None, RunState, RunState]", expected "StateGraph[RunState, None, RunState, RunState]")  [return-value]
 app\main.py:68: error: Function is missing a return type annotation  [no-untyped-def]
-Found 29 errors in 6 files (checked 42 source files)
+Found 28 errors in 5 files (checked 42 source files)
