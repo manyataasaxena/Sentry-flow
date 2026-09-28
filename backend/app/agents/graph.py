@@ -67,7 +67,7 @@ async def approval_gate(state: RunState) -> Dict[str, object]:
     if not state.plan or not state.plan.steps:
         return as_update(StateUpdate(status=RunStatus.BLOCKED, approval=ApprovalDecision(approved=False, note="No plan to approve")))
 
-    high_risk_steps = [s for s in state.plan.steps if s.risk == RiskLevel.HIGH]
+    high_risk_steps = [s for s in state.plan.steps if state.plan.risk == RiskLevel.HIGH]
     if high_risk_steps:
         return as_update(StateUpdate(approval=ApprovalDecision(approved=True, note=f"Auto-approved with {len(high_risk_steps)} high-risk steps")))
     return as_update(StateUpdate(approval=ApprovalDecision(approved=True, note="Plan approved automatically")))
@@ -201,7 +201,7 @@ async def finalize(state: RunState) -> Dict[str, object]:
         return as_update(StateUpdate(draft=fallback.create_final_answer(state.task, state.results), status=RunStatus.COMPLETED))
 
 
-def create_agent_graph() -> StateGraph[RunState, None, RunState, RunState]:
+def create_agent_graph():
     """Create and return the agent execution graph."""
     workflow = StateGraph(RunState)
 
