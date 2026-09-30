@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from ..deps import get_current_user
 from ...schemas.run import CreateRunRequest, RunSummary, RunDetail, ErrorResponse, ApprovalDecision, RunStatus
 from ...schemas.common import BudgetUsage
+from ...schemas.intent import IntentType
+from ...schemas.verification import Verdict
 from ...schemas.events import RunEvent
 from ...core.logging import get_logger
 
@@ -30,16 +32,28 @@ async def create_run(
     # Check idempotency
     if idempotency_key and idempotency_key in _runs:
         existing = _runs[idempotency_key]
+        intent_val = existing.get("intent")
+        intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
+        verdict_val = existing.get("verdict")
+        verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
+        verifier_score_val = existing.get("verifier_score")
+        verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
+        budget_val = existing.get("budget")
+        budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
+        created_at_val = existing.get("created_at")
+        created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
+        completed_at_val = existing.get("completed_at")
+        completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
         return RunSummary(
             id=str(existing.get("id", "")),
             task=str(existing.get("task", "")),
             status=RunStatus(str(existing.get("status", "pending"))),
-            intent=existing.get("intent"),
-            verdict=existing.get("verdict"),
-            verifier_score=existing.get("verifier_score"),
-            budget=existing.get("budget", BudgetUsage()),
-            created_at=existing.get("created_at", datetime.now()),
-            completed_at=existing.get("completed_at"),
+            intent=intent,
+            verdict=verdict,
+            verifier_score=verifier_score,
+            budget=budget,
+            created_at=created_at,
+            completed_at=completed_at,
         )
 
     run_data: Dict[str, object] = {
@@ -83,16 +97,28 @@ async def list_runs(
             continue
         if status and run_data.get("status") != status:
             continue
+        intent_val = run_data.get("intent")
+        intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
+        verdict_val = run_data.get("verdict")
+        verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
+        verifier_score_val = run_data.get("verifier_score")
+        verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
+        budget_val = run_data.get("budget")
+        budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
+        created_at_val = run_data.get("created_at")
+        created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
+        completed_at_val = run_data.get("completed_at")
+        completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
         runs.append(RunSummary(
             id=str(run_data.get("id", "")),
             task=str(run_data.get("task", "")),
             status=RunStatus(str(run_data.get("status", "pending"))),
-            intent=run_data.get("intent"),
-            verdict=run_data.get("verdict"),
-            verifier_score=run_data.get("verifier_score"),
-            budget=run_data.get("budget", BudgetUsage()),
-            created_at=run_data.get("created_at", datetime.now()),
-            completed_at=run_data.get("completed_at"),
+            intent=intent,
+            verdict=verdict,
+            verifier_score=verifier_score,
+            budget=budget,
+            created_at=created_at,
+            completed_at=completed_at,
         ))
     return runs
 
@@ -104,22 +130,40 @@ async def get_run(run_id: str, current_user: dict[str, object] = Depends(get_cur
     if not run_data:
         raise HTTPException(status_code=404, detail="Run not found")
 
+    intent_val = run_data.get("intent")
+    intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
+    verdict_val = run_data.get("verdict")
+    verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
+    verifier_score_val = run_data.get("verifier_score")
+    verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
+    budget_val = run_data.get("budget")
+    budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
+    created_at_val = run_data.get("created_at")
+    created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
+    completed_at_val = run_data.get("completed_at")
+    completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
+    plan_val = run_data.get("plan")
+    results_val = run_data.get("results", [])
+    answer_val = run_data.get("answer")
+    report_val = run_data.get("report")
+    error_val = run_data.get("error")
+    langfuse_trace_url_val = run_data.get("langfuse_trace_url")
     return RunDetail(
         id=str(run_data.get("id", "")),
         task=str(run_data.get("task", "")),
         status=RunStatus(str(run_data.get("status", "pending"))),
-        intent=run_data.get("intent"),
-        verdict=run_data.get("verdict"),
-        verifier_score=run_data.get("verifier_score"),
-        budget=run_data.get("budget", BudgetUsage()),
-        created_at=run_data.get("created_at", datetime.now()),
-        completed_at=run_data.get("completed_at"),
-        plan=run_data.get("plan"),
-        results=run_data.get("results", []),
-        answer=run_data.get("answer"),
-        report=run_data.get("report"),
-        error=run_data.get("error"),
-        langfuse_trace_url=run_data.get("langfuse_trace_url"),
+        intent=intent,
+        verdict=verdict,
+        verifier_score=verifier_score,
+        budget=budget,
+        created_at=created_at,
+        completed_at=completed_at,
+        plan=plan_val,
+        results=results_val,
+        answer=answer_val,
+        report=report_val,
+        error=error_val,
+        langfuse_trace_url=langfuse_trace_url_val,
     )
 
 
