@@ -201,7 +201,7 @@ async def finalize(state: RunState) -> Dict[str, object]:
         return as_update(StateUpdate(draft=fallback.create_final_answer(state.task, state.results), status=RunStatus.COMPLETED))
 
 
-def create_agent_graph():
+def create_agent_graph() -> StateGraph[RunState, None, RunState, RunState]:
     """Create and return the agent execution graph."""
     workflow = StateGraph(RunState)
 
