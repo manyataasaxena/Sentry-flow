@@ -3,6 +3,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .core.config import settings
 from .core.errors import SentryFlowError
@@ -66,8 +67,6 @@ app.include_router(ws_router)
 
 @app.exception_handler(SentryFlowError)
 async def _handle_sentryflow_error(_request: object, exc: SentryFlowError) -> JSONResponse:
-    from fastapi.responses import JSONResponse
-
     return JSONResponse(
         status_code=500,
         content={"error": exc.error_info, "request_id": "local"},

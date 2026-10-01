@@ -172,7 +172,7 @@ async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> Dict[s
     """Get run events for replay."""
     events = _events.get(run_id, [])
     if after_seq is not None:
-        events = [e for e in events if (e.get("seq", 0) if isinstance(e.get("seq"), int) else 0) > after_seq]
+        events = [e for e in events if e.get("seq", 0) > after_seq]
     return {"events": events}
 
 
