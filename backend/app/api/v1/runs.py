@@ -28,7 +28,7 @@ def _convert_intent(val: object) -> IntentType | None:
         return IntentType(val)
     if val is None:
         return None
-    return val
+    return None
 
 
 def _convert_verdict(val: object) -> Verdict | None:
@@ -36,7 +36,7 @@ def _convert_verdict(val: object) -> Verdict | None:
         return Verdict(val)
     if val is None:
         return None
-    return val
+    return None
 
 
 def _convert_verifier_score(val: object) -> float | None:
@@ -107,6 +107,17 @@ def _convert_langfuse_url(val: object) -> str | None:
     if val is None:
         return None
     return None
+
+
+def _convert_seq(val: object) -> int:
+    if isinstance(val, (int, float)):
+        return int(val)
+    if isinstance(val, str):
+        try:
+            return int(val)
+        except ValueError:
+            return 0
+    return 0
 
 
 @router.post("", response_model=RunSummary, status_code=202)
@@ -219,7 +230,7 @@ async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> Dict[s
     """Get run events for replay."""
     events = _events.get(run_id, [])
     if after_seq is not None:
-        events = [e for e in events if int(e.get("seq", 0)) > after_seq]
+        events = [e for e in events if _convert_seq(e.get("seq", 0)) > after_seq]
     return {"events": events}
 
 

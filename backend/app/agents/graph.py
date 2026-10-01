@@ -1,6 +1,6 @@
 """SentryFlow LangGraph agent orchestration."""
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, CompiledStateGraph
 
 from .state import RunState, as_update, StateUpdate
 from ..core.observability import observe
@@ -201,7 +201,7 @@ async def finalize(state: RunState) -> Dict[str, object]:
         return as_update(StateUpdate(draft=fallback.create_final_answer(state.task, state.results), status=RunStatus.COMPLETED))
 
 
-def create_agent_graph() -> StateGraph[RunState, None, RunState, RunState]:
+def create_agent_graph() -> CompiledStateGraph[RunState, None, RunState, RunState]:
     """Create and return the agent execution graph."""
     workflow = StateGraph(RunState)
 

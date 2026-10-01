@@ -1,8 +1,8 @@
-app\agents\graph.py:204: error: Function is missing a return type annotation  [no-untyped-def]
-app\agents\graph.py:227: error: Call to untyped function "create_agent_graph" in typed context  [no-untyped-call]
-app\api\v1\runs.py:72: error: Unused "type: ignore" comment  [unused-ignore]
-app\api\v1\runs.py:128: error: Argument "created_at" to "RunSummary" has incompatible type "datetime | None"; expected "datetime"  [arg-type]
-app\api\v1\runs.py:181: error: Argument "created_at" to "RunSummary" has incompatible type "datetime | None"; expected "datetime"  [arg-type]
-app\api\v1\runs.py:202: error: Argument "created_at" to "RunDetail" has incompatible type "datetime | None"; expected "datetime"  [arg-type]
-app\api\v1\runs.py:218: error: Unsupported operand types for < ("int" and "object")  [operator]
-Found 7 errors in 2 files (checked 42 source files)
+app\api\v1\runs.py:31: error: Incompatible return value type (got "object", expected "IntentType | None")  [return-value]
+app\api\v1\runs.py:39: error: Incompatible return value type (got "object", expected "Verdict | None")  [return-value]
+app\api\v1\runs.py:222: error: No overload variant of "int" matches argument type "object"  [call-overload]
+app\api\v1\runs.py:222: note: Possible overload variants:
+app\api\v1\runs.py:222: note:     def int(str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc = ..., /) -> int
+app\api\v1\runs.py:222: note:     def int(str | bytes | bytearray, /, base: SupportsIndex) -> int
+app\agents\graph.py:224: error: Incompatible return value type (got "CompiledStateGraph[RunState, None, RunState, RunState]", expected "StateGraph[RunState, None, RunState, RunState]")  [return-value]
+Found 4 errors in 2 files (checked 42 source files)
