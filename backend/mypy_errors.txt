@@ -11,6 +11,6 @@ app\api\v1\runs.py:164: error: Argument "report" to "RunDetail" has incompatible
 app\api\v1\runs.py:165: error: Argument "error" to "RunDetail" has incompatible type "object"; expected "ErrorInfo | None"  [arg-type]
 app\api\v1\runs.py:166: error: Argument "langfuse_trace_url" to "RunDetail" has incompatible type "object"; expected "str | None"  [arg-type]
 app\api\v1\runs.py:175: error: Unsupported operand types for < ("int" and "object")  [operator]
-app\main.py:68: error: Name "JSONResponse" is not defined  [name-defined]
-app\agents\graph.py:224: error: Incompatible return value type (got "CompiledStateGraph[RunState, None, RunState, RunState]", expected "StateGraph[RunState, None, RunState, RunState]")  [return-value]
-Found 15 errors in 3 files (checked 42 source files)
+app\agents\graph.py:204: error: Function is missing a return type annotation  [no-untyped-def]
+app\agents\graph.py:227: error: Call to untyped function "create_agent_graph" in typed context  [no-untyped-call]
+Found 15 errors in 2 files (checked 42 source files)
