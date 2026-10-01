@@ -5,9 +5,12 @@ from pydantic import BaseModel
 
 from ..deps import get_current_user
 from ...schemas.run import CreateRunRequest, RunSummary, RunDetail, ErrorResponse, ApprovalDecision, RunStatus
-from ...schemas.common import BudgetUsage
+from ...schemas.common import BudgetUsage, ErrorInfo
 from ...schemas.intent import IntentType
-from ...schemas.verification import Verdict
+from ...schemas.verification import Verdict, VerificationReport
+from ...schemas.plan import Plan
+from ...schemas.answer import FinalAnswer
+from ...schemas.tools import ToolResult
 from ...schemas.events import RunEvent
 from ...core.logging import get_logger
 
@@ -18,6 +21,88 @@ router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 # In-memory store for demo (would be replaced by database in production)
 _runs: Dict[str, Dict[str, object]] = {}
 _events: Dict[str, List[Dict[str, object]]] = {}
+
+
+def _convert_intent(val: object) -> IntentType | None:
+    if isinstance(val, str):
+        return IntentType(val)
+    if val is None:
+        return None
+    return val  # type: ignore[return-value]
+
+
+def _convert_verdict(val: object) -> Verdict | None:
+    if isinstance(val, str):
+        return Verdict(val)
+    if val is None:
+        return None
+    return val  # type: ignore[return-value]
+
+
+def _convert_verifier_score(val: object) -> float | None:
+    if isinstance(val, (int, float)):
+        return float(val)
+    return None
+
+
+def _convert_budget(val: object) -> BudgetUsage:
+    if isinstance(val, BudgetUsage):
+        return val
+    return BudgetUsage()
+
+
+def _convert_datetime(val: object, default: datetime | None = None) -> datetime | None:
+    if isinstance(val, datetime):
+        return val
+    if val is None:
+        return default
+    return default
+
+
+def _convert_plan(val: object) -> Plan | None:
+    if isinstance(val, Plan):
+        return val
+    if val is None:
+        return None
+    return None
+
+
+def _convert_results(val: object) -> list[ToolResult]:
+    if isinstance(val, list):
+        return val  # type: ignore[return-value]
+    return []
+
+
+def _convert_answer(val: object) -> FinalAnswer | None:
+    if isinstance(val, FinalAnswer):
+        return val
+    if val is None:
+        return None
+    return None
+
+
+def _convert_report(val: object) -> VerificationReport | None:
+    if isinstance(val, VerificationReport):
+        return val
+    if val is None:
+        return None
+    return None
+
+
+def _convert_error(val: object) -> ErrorInfo | None:
+    if isinstance(val, ErrorInfo):
+        return val
+    if val is None:
+        return None
+    return None
+
+
+def _convert_langfuse_url(val: object) -> str | None:
+    if isinstance(val, str):
+        return val
+    if val is None:
+        return None
+    return None
 
 
 @router.post("", response_model=RunSummary, status_code=202)
@@ -32,28 +117,16 @@ async def create_run(
     # Check idempotency
     if idempotency_key and idempotency_key in _runs:
         existing = _runs[idempotency_key]
-        intent_val = existing.get("intent")
-        intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
-        verdict_val = existing.get("verdict")
-        verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
-        verifier_score_val = existing.get("verifier_score")
-        verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
-        budget_val = existing.get("budget")
-        budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
-        created_at_val = existing.get("created_at")
-        created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
-        completed_at_val = existing.get("completed_at")
-        completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
         return RunSummary(
             id=str(existing.get("id", "")),
             task=str(existing.get("task", "")),
             status=RunStatus(str(existing.get("status", "pending"))),
-            intent=intent,
-            verdict=verdict,
-            verifier_score=verifier_score,
-            budget=budget,
-            created_at=created_at,
-            completed_at=completed_at,
+            intent=_convert_intent(existing.get("intent")),
+            verdict=_convert_verdict(existing.get("verdict")),
+            verifier_score=_convert_verifier_score(existing.get("verifier_score")),
+            budget=_convert_budget(existing.get("budget")),
+            created_at=_convert_datetime(existing.get("created_at"), datetime.now()),
+            completed_at=_convert_datetime(existing.get("completed_at")),
         )
 
     run_data: Dict[str, object] = {
@@ -97,28 +170,16 @@ async def list_runs(
             continue
         if status and run_data.get("status") != status:
             continue
-        intent_val = run_data.get("intent")
-        intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
-        verdict_val = run_data.get("verdict")
-        verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
-        verifier_score_val = run_data.get("verifier_score")
-        verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
-        budget_val = run_data.get("budget")
-        budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
-        created_at_val = run_data.get("created_at")
-        created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
-        completed_at_val = run_data.get("completed_at")
-        completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
         runs.append(RunSummary(
             id=str(run_data.get("id", "")),
             task=str(run_data.get("task", "")),
             status=RunStatus(str(run_data.get("status", "pending"))),
-            intent=intent,
-            verdict=verdict,
-            verifier_score=verifier_score,
-            budget=budget,
-            created_at=created_at,
-            completed_at=completed_at,
+            intent=_convert_intent(run_data.get("intent")),
+            verdict=_convert_verdict(run_data.get("verdict")),
+            verifier_score=_convert_verifier_score(run_data.get("verifier_score")),
+            budget=_convert_budget(run_data.get("budget")),
+            created_at=_convert_datetime(run_data.get("created_at"), datetime.now()),
+            completed_at=_convert_datetime(run_data.get("completed_at")),
         ))
     return runs
 
@@ -130,40 +191,22 @@ async def get_run(run_id: str, current_user: dict[str, object] = Depends(get_cur
     if not run_data:
         raise HTTPException(status_code=404, detail="Run not found")
 
-    intent_val = run_data.get("intent")
-    intent = IntentType(intent_val) if isinstance(intent_val, str) else None if intent_val is None else intent_val
-    verdict_val = run_data.get("verdict")
-    verdict = Verdict(verdict_val) if isinstance(verdict_val, str) else None if verdict_val is None else verdict_val
-    verifier_score_val = run_data.get("verifier_score")
-    verifier_score = float(verifier_score_val) if isinstance(verifier_score_val, (int, float)) else None
-    budget_val = run_data.get("budget")
-    budget = budget_val if isinstance(budget_val, BudgetUsage) else BudgetUsage()
-    created_at_val = run_data.get("created_at")
-    created_at = created_at_val if isinstance(created_at_val, datetime) else datetime.now()
-    completed_at_val = run_data.get("completed_at")
-    completed_at = completed_at_val if isinstance(completed_at_val, datetime) else None
-    plan_val = run_data.get("plan")
-    results_val = run_data.get("results", [])
-    answer_val = run_data.get("answer")
-    report_val = run_data.get("report")
-    error_val = run_data.get("error")
-    langfuse_trace_url_val = run_data.get("langfuse_trace_url")
     return RunDetail(
         id=str(run_data.get("id", "")),
         task=str(run_data.get("task", "")),
         status=RunStatus(str(run_data.get("status", "pending"))),
-        intent=intent,
-        verdict=verdict,
-        verifier_score=verifier_score,
-        budget=budget,
-        created_at=created_at,
-        completed_at=completed_at,
-        plan=plan_val,
-        results=results_val,
-        answer=answer_val,
-        report=report_val,
-        error=error_val,
-        langfuse_trace_url=langfuse_trace_url_val,
+        intent=_convert_intent(run_data.get("intent")),
+        verdict=_convert_verdict(run_data.get("verdict")),
+        verifier_score=_convert_verifier_score(run_data.get("verifier_score")),
+        budget=_convert_budget(run_data.get("budget")),
+        created_at=_convert_datetime(run_data.get("created_at"), datetime.now()),
+        completed_at=_convert_datetime(run_data.get("completed_at")),
+        plan=_convert_plan(run_data.get("plan")),
+        results=_convert_results(run_data.get("results", [])),
+        answer=_convert_answer(run_data.get("answer")),
+        report=_convert_report(run_data.get("report")),
+        error=_convert_error(run_data.get("error")),
+        langfuse_trace_url=_convert_langfuse_url(run_data.get("langfuse_trace_url")),
     )
 
 
