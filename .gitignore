@@ -29,3 +29,17 @@ dist-ssr
 /playwright/.cache/
 .last-run.json
 .dyad/
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+mypy_errors.txt
