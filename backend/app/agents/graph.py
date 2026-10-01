@@ -1,6 +1,7 @@
 """SentryFlow LangGraph agent orchestration."""
 
-from langgraph.graph import StateGraph, END, CompiledStateGraph
+from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 
 from .state import RunState, as_update, StateUpdate
 from ..core.observability import observe
