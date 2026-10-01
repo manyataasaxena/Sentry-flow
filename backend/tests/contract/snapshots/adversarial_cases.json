@@ -1,0 +1,12 @@
+[
+  {
+    "id": "test-case-1",
+    "category": "direct_injection",
+    "severity": "critical"
+  },
+  {
+    "id": "test-case-2",
+    "category": "jailbreak",
+    "severity": "critical"
+  }
+]
