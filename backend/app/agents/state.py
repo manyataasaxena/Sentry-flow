@@ -1,43 +1,42 @@
 import operator
-from typing import Annotated, Optional
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from ..schemas.run import RunStatus
+from ..schemas.answer import FinalAnswer
 from ..schemas.common import BudgetUsage
 from ..schemas.intent import IntentClassification
 from ..schemas.plan import Plan
-from ..schemas.answer import FinalAnswer
-from ..schemas.verification import VerificationReport
+from ..schemas.run import ApprovalDecision, RunOptions, RunStatus
 from ..schemas.tools import ToolResult
-from ..schemas.run import ApprovalDecision, RunOptions
+from ..schemas.verification import VerificationReport
 
 
 class RunState(BaseModel):
     run_id: str
     task: str
     options: RunOptions
-    intent: Optional[IntentClassification] = None
-    plan: Optional[Plan] = None
+    intent: IntentClassification | None = None
+    plan: Plan | None = None
     results: Annotated[list[ToolResult], operator.add] = Field(default_factory=list)
-    approval: Optional[ApprovalDecision] = None
-    draft: Optional[FinalAnswer] = None
-    report: Optional[VerificationReport] = None
+    approval: ApprovalDecision | None = None
+    draft: FinalAnswer | None = None
+    report: VerificationReport | None = None
     revision_count: int = 0
     status: RunStatus = RunStatus.RUNNING
     budget: BudgetUsage = Field(default_factory=BudgetUsage)
 
 
 class StateUpdate(BaseModel):
-    intent: Optional[IntentClassification] = None
-    plan: Optional[Plan] = None
-    results: Optional[list[ToolResult]] = None
-    approval: Optional[ApprovalDecision] = None
-    draft: Optional[FinalAnswer] = None
-    report: Optional[VerificationReport] = None
-    revision_count: Optional[int] = None
-    status: Optional[RunStatus] = None
-    budget: Optional[BudgetUsage] = None
+    intent: IntentClassification | None = None
+    plan: Plan | None = None
+    results: list[ToolResult] | None = None
+    approval: ApprovalDecision | None = None
+    draft: FinalAnswer | None = None
+    report: VerificationReport | None = None
+    revision_count: int | None = None
+    status: RunStatus | None = None
+    budget: BudgetUsage | None = None
 
 
 def as_update(update: StateUpdate) -> dict[str, object]:

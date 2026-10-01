@@ -1,5 +1,6 @@
-from typing import Optional, Callable, Any, TypeVar
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, TypeVar
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -54,7 +55,7 @@ def observe(name: str, as_type: str = "generation") -> Callable[[F], F]:
     return decorator
 
 
-def init_langfuse() -> Optional[Any]:
+def init_langfuse() -> Any | None:
     """Initialize Langfuse client.
 
     Returns None if keys are not configured (no-op mode).
@@ -80,5 +81,5 @@ def init_langfuse() -> Optional[Any]:
 def post_score(run_id: str, score: float, verdict: str) -> None:
     """Post verifier score to Langfuse."""
     if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
-        logger.info(f"Posting score to Langfuse", run_id=run_id, score=score, verdict=verdict)
+        logger.info("Posting score to Langfuse", run_id=run_id, score=score, verdict=verdict)
     # In production, would call langfuse.score()

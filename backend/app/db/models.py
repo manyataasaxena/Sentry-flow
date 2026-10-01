@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, DateTime, JSON, Text, Integer, Float, Boolean, Index
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
+
 
 class Base(DeclarativeBase):
     pass

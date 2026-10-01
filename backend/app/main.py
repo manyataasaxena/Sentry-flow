@@ -1,25 +1,24 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .api.v1.audit import router as audit_router
+from .api.v1.auth import router as auth_router
+from .api.v1.evals import router as evals_router
+from .api.v1.runs import router as runs_router
+from .api.v1.system import router as system_router
+from .api.v1.tools import router as tools_router
+from .api.v1.ws import router as ws_router
 from .core.config import settings
 from .core.errors import SentryFlowError
 from .core.logging import configure_logging
-from .db.postgres import postgres
 from .db.checkpointer import checkpointer
+from .db.postgres import postgres
 from .db.redis import redis_client
 from .db.repositories import repository
-from .api.v1.runs import router as runs_router
-from .api.v1.tools import router as tools_router
-from .api.v1.evals import router as evals_router
-from .api.v1.system import router as system_router
-from .api.v1.audit import router as audit_router
-from .api.v1.auth import router as auth_router
-from .api.v1.ws import router as ws_router
-
 
 configure_logging()
 
@@ -30,12 +29,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await postgres.connect()
     await redis_client.connect()
     await repository.init()
-    
+
     # Setup LangGraph checkpointer
     await checkpointer.setup()
-    
+
     yield
-    
+
     # Cleanup
     await repository.close()
     await redis_client.close()
@@ -85,7 +84,7 @@ async def readyz() -> dict[str, str]:
     redis_healthy = await redis_client.health_check()
     repo_healthy = await repository.health_check()
     checkpointer_healthy = await checkpointer.health_check()
-    
+
     if postgres_healthy and redis_healthy and repo_healthy and checkpointer_healthy:
         return {"status": "ok"}
     else:

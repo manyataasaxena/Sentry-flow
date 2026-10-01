@@ -1,9 +1,9 @@
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from enum import StrEnum
-from typing import Optional, Any, Callable, Awaitable, TypeVar
+from typing import Any, TypeVar
 
-from ..core.config import settings
 from ..core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,8 +26,8 @@ class CircuitBreaker:
         self.recovery_timeout = recovery_timeout
         self._state = CircuitState.CLOSED
         self._failure_count = 0
-        self._last_failure_at: Optional[float] = None
-        self._opened_at: Optional[float] = None
+        self._last_failure_at: float | None = None
+        self._opened_at: float | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -53,7 +53,7 @@ class CircuitBreaker:
             result = await func(*args, **kwargs)
             await self._on_success()
             return result
-        except Exception as e:
+        except Exception:
             await self._on_failure()
             raise
 

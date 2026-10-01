@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Annotated, Literal, Optional
 
 from pydantic import Field
 
@@ -35,5 +34,5 @@ class VerificationReport(Contract):
     feedback: str
     suggested_improvements: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0, default=0.5)
-    revision_instructions: Optional[str] = None
-    safe_message: Optional[str] = None
+    revision_instructions: str | None = None
+    safe_message: str | None = None

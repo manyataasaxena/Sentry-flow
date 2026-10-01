@@ -1,26 +1,31 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from typing import Any
 
-from ..deps import get_current_user
-from ...schemas.run import CreateRunRequest, RunSummary, RunDetail, ErrorResponse, ApprovalDecision, RunStatus
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from ...core.logging import get_logger
+from ...schemas.answer import FinalAnswer
 from ...schemas.common import BudgetUsage, ErrorInfo
 from ...schemas.intent import IntentType
-from ...schemas.verification import Verdict, VerificationReport
 from ...schemas.plan import Plan
-from ...schemas.answer import FinalAnswer
+from ...schemas.run import (
+    ApprovalDecision,
+    CreateRunRequest,
+    RunDetail,
+    RunStatus,
+    RunSummary,
+)
 from ...schemas.tools import ToolResult
-from ...schemas.events import RunEvent
-from ...core.logging import get_logger
+from ...schemas.verification import Verdict, VerificationReport
+from ..deps import get_current_user
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 
 # In-memory store for demo (would be replaced by database in production)
-_runs: Dict[str, Dict[str, object]] = {}
-_events: Dict[str, List[Dict[str, object]]] = {}
+_runs: dict[str, dict[str, object]] = {}
+_events: dict[str, list[dict[str, object]]] = {}
 
 
 def _convert_intent(val: object) -> IntentType | None:
@@ -124,7 +129,7 @@ def _convert_seq(val: object) -> int:
 async def create_run(
     request: CreateRunRequest,
     current_user: dict[str, object] = Depends(get_current_user),
-    idempotency_key: Optional[str] = Query(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Query(None, alias="Idempotency-Key"),
 ) -> RunSummary:
     """Create a new run."""
     run_id = f"run-{len(_runs) + 1}"
@@ -144,7 +149,7 @@ async def create_run(
             completed_at=_convert_datetime_optional(existing.get("completed_at")),
         )
 
-    run_data: Dict[str, object] = {
+    run_data: dict[str, object] = {
         "id": run_id,
         "task": request.task,
         "status": RunStatus.PENDING,
@@ -172,14 +177,14 @@ async def create_run(
     )
 
 
-@router.get("", response_model=List[RunSummary])
+@router.get("", response_model=list[RunSummary])
 async def list_runs(
-    user_id: Optional[str] = None,
-    status: Optional[str] = None,
+    user_id: str | None = None,
+    status: str | None = None,
     current_user: dict[str, object] = Depends(get_current_user),
-) -> List[RunSummary]:
+) -> list[RunSummary]:
     """List runs with optional filters."""
-    runs: List[RunSummary] = []
+    runs: list[RunSummary] = []
     for run_id, run_data in _runs.items():
         if user_id and run_data.get("user_id") != user_id:
             continue
@@ -226,7 +231,7 @@ async def get_run(run_id: str, current_user: dict[str, object] = Depends(get_cur
 
 
 @router.get("/{run_id}/events")
-async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> Dict[str, List[Dict[str, Any]]]:
+async def get_run_events(run_id: str, after_seq: int | None = None) -> dict[str, list[dict[str, Any]]]:
     """Get run events for replay."""
     events = _events.get(run_id, [])
     if after_seq is not None:
@@ -234,8 +239,8 @@ async def get_run_events(run_id: str, after_seq: Optional[int] = None) -> Dict[s
     return {"events": events}
 
 
-@router.post("/{run_id}/approve", response_model=Dict[str, str])
-async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dict[str, object] = Depends(get_current_user)) -> Dict[str, str]:
+@router.post("/{run_id}/approve", response_model=dict[str, str])
+async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dict[str, object] = Depends(get_current_user)) -> dict[str, str]:
     """Approve or reject a run."""
     run_data = _runs.get(run_id)
     if not run_data:
@@ -247,8 +252,8 @@ async def approve_run(run_id: str, decision: ApprovalDecision, current_user: dic
     return {"status": "approved" if decision.approved else "rejected"}
 
 
-@router.post("/{run_id}/cancel", response_model=Dict[str, str])
-async def cancel_run(run_id: str, current_user: dict[str, object] = Depends(get_current_user)) -> Dict[str, str]:
+@router.post("/{run_id}/cancel", response_model=dict[str, str])
+async def cancel_run(run_id: str, current_user: dict[str, object] = Depends(get_current_user)) -> dict[str, str]:
     """Cancel a running run."""
     run_data = _runs.get(run_id)
     if not run_data:

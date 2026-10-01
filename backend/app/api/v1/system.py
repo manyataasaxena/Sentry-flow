@@ -1,10 +1,10 @@
-from typing import List, Optional, Any
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Any
 
-from ..deps import get_current_user
-from ...schemas.system import BreakerStatus, HealthReport
+from fastapi import APIRouter, Depends
+
 from ...core.logging import get_logger
-from ...core.circuit_breaker import CircuitBreaker, CircuitState
+from ...schemas.system import BreakerStatus, HealthReport
+from ..deps import get_current_user
 
 logger = get_logger(__name__)
 
@@ -33,8 +33,8 @@ async def health_check(current_user: dict[str, Any] = Depends(get_current_user))
     )
 
 
-@router.get("/breakers", response_model=List[BreakerStatus])
-async def list_breakers(current_user: dict[str, Any] = Depends(get_current_user)) -> List[BreakerStatus]:
+@router.get("/breakers", response_model=list[BreakerStatus])
+async def list_breakers(current_user: dict[str, Any] = Depends(get_current_user)) -> list[BreakerStatus]:
     """List circuit breaker statuses."""
     return [BreakerStatus(**v) for v in _breakers.values()]
 

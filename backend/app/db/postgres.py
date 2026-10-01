@@ -1,7 +1,8 @@
+from typing import Any
+
 import asyncpg  # type: ignore[import-untyped]
 from asyncpg import Pool
 from asyncpg.pool import PoolConnectionProxy  # type: ignore[import-untyped]
-from typing import Any, Optional, cast
 
 from ..core.config import settings
 
@@ -10,7 +11,7 @@ class PostgresAdapter:
     """PostgreSQL adapter for LangGraph checkpointer and app tables."""
 
     def __init__(self) -> None:
-        self._pool: Optional[Pool] = None
+        self._pool: Pool | None = None
 
     async def connect(self) -> None:
         """Create connection pool using psycopg DSN."""
@@ -47,7 +48,7 @@ class PostgresAdapter:
                 result = await conn.fetch(query, *args)
                 return [dict(row) for row in result]
 
-    async def execute_one(self, query: str, *args: Any) -> Optional[dict[str, Any]]:
+    async def execute_one(self, query: str, *args: Any) -> dict[str, Any] | None:
             """Execute a query and return a single result."""
             async with await self.get_connection() as conn:
                 result = await conn.fetchrow(query, *args)

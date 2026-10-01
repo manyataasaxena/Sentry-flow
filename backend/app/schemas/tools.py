@@ -1,9 +1,9 @@
 from enum import StrEnum
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 from pydantic import Field, HttpUrl
 
-from .common import Contract, RiskLevel, ErrorInfo
+from .common import Contract, ErrorInfo, RiskLevel
 
 
 class ToolName(StrEnum):
@@ -106,8 +106,8 @@ class ToolResult(Contract):
     step_id: str
     tool: ToolName
     status: ToolStatus
-    output: Optional[ToolOutput] = None
-    error: Optional[ErrorInfo] = None
+    output: ToolOutput | None = None
+    error: ErrorInfo | None = None
     latency_ms: int = Field(ge=0)
     cache_hit: bool = False
 

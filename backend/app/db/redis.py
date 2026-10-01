@@ -1,5 +1,7 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 import redis.asyncio as redis
-from typing import Any, Callable, Optional, Awaitable
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -11,7 +13,7 @@ class RedisAdapter:
     """Redis adapter for caching, pub/sub, and circuit breaker state."""
 
     def __init__(self) -> None:
-        self._client: Optional[redis.Redis] = None
+        self._client: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Connect to Redis."""
@@ -26,14 +28,14 @@ class RedisAdapter:
             await self._client.close()
             self._client = None
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
             """Get value from Redis."""
             if not self._client:
                 raise RuntimeError("Redis client not initialized")
             result = await self._client.get(key)
             return result if isinstance(result, str) else None
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in Redis."""
         if not self._client:
             raise RuntimeError("Redis client not initialized")

@@ -1,12 +1,12 @@
-from typing import Optional, List, Any, cast
-from sqlalchemy import select, and_
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from typing import Any, cast
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from ..core.config import settings
-from ..core.logging import get_logger
 from ..core.errors import SentryFlowError
-
-from .models import Base, Run, RunEvent, EvalRun, EvalResult, User, AuditLog, KbDocument
+from ..core.logging import get_logger
+from .models import AuditLog, Base, EvalResult, EvalRun, KbDocument, Run, RunEvent, User
 
 logger = get_logger(__name__)
 
@@ -53,12 +53,12 @@ class DatabaseRepository:
             await session.refresh(run)
             return run
 
-    async def get_run(self, run_id: str) -> Optional[Run]:
+    async def get_run(self, run_id: str) -> Run | None:
         """Get a run by ID."""
         async with self._session_factory() as session:
             return await session.get(Run, run_id)
 
-    async def update_run(self, run_id: str, update_data: dict[str, Any]) -> Optional[Run]:
+    async def update_run(self, run_id: str, update_data: dict[str, Any]) -> Run | None:
         """Update a run."""
         async with self._session_factory() as session:
             run = await session.get(Run, run_id)
@@ -70,7 +70,7 @@ class DatabaseRepository:
             await session.refresh(run)
             return run
 
-    async def list_runs(self, user_id: Optional[str] = None, status: Optional[str] = None, limit: int = 100) -> List[Run]:
+    async def list_runs(self, user_id: str | None = None, status: str | None = None, limit: int = 100) -> list[Run]:
         """List runs with optional filters."""
         async with self._session_factory() as session:
             query = select(Run)
@@ -80,7 +80,7 @@ class DatabaseRepository:
                 query = query.where(Run.status == status)
             query = query.order_by(Run.created_at.desc()).limit(limit)
             result = await session.execute(query)
-            return cast(List[Run], result.scalars().all())
+            return cast(list[Run], result.scalars().all())
 
     async def create_run_event(self, event_data: dict[str, Any]) -> RunEvent:
         """Create a run event."""
@@ -91,7 +91,7 @@ class DatabaseRepository:
             await session.refresh(event)
             return event
 
-    async def get_run_events(self, run_id: str, after_seq: Optional[int] = None, limit: int = 100) -> List[RunEvent]:
+    async def get_run_events(self, run_id: str, after_seq: int | None = None, limit: int = 100) -> list[RunEvent]:
         """Get run events."""
         async with self._session_factory() as session:
             query = select(RunEvent).where(RunEvent.run_id == run_id)
@@ -99,29 +99,29 @@ class DatabaseRepository:
                 query = query.where(RunEvent.seq > after_seq)
             query = query.order_by(RunEvent.seq).limit(limit)
             result = await session.execute(query)
-            return cast(List[RunEvent], result.scalars().all())
+            return cast(list[RunEvent], result.scalars().all())
 
     # User operations
-    async def get_user(self, user_id: str) -> Optional[User]:
+    async def get_user(self, user_id: str) -> User | None:
         """Get a user by ID."""
         async with self._session_factory() as session:
             return await session.get(User, user_id)
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> User | None:
         """Get a user by email."""
         async with self._session_factory() as session:
             result = await session.execute(select(User).where(User.email == email))
             return result.scalar_one_or_none()
 
     # KB operations
-    async def search_kb(self, query: str, top_k: int = 10) -> List[KbDocument]:
+    async def search_kb(self, query: str, top_k: int = 10) -> list[KbDocument]:
         """Search KB documents."""
         async with self._session_factory() as session:
             # Simple text search for now - would use full-text search in production
             result = await session.execute(
                 select(KbDocument).where(KbDocument.body.ilike(f"%{query}%")).limit(top_k)
             )
-            return cast(List[KbDocument], result.scalars().all())
+            return cast(list[KbDocument], result.scalars().all())
 
     # Eval operations
     async def create_eval_run(self, eval_run_data: dict[str, Any]) -> EvalRun:
@@ -142,7 +142,7 @@ class DatabaseRepository:
             await session.refresh(result)
             return result
 
-    async def get_eval_run(self, eval_run_id: str) -> Optional[EvalRun]:
+    async def get_eval_run(self, eval_run_id: str) -> EvalRun | None:
         """Get an eval run by ID."""
         async with self._session_factory() as session:
             return await session.get(EvalRun, eval_run_id)
@@ -157,7 +157,7 @@ class DatabaseRepository:
             await session.refresh(audit)
             return audit
 
-    async def list_audit_logs(self, actor_id: Optional[str] = None, action: Optional[str] = None, limit: int = 100) -> List[AuditLog]:
+    async def list_audit_logs(self, actor_id: str | None = None, action: str | None = None, limit: int = 100) -> list[AuditLog]:
         """List audit logs with optional filters."""
         async with self._session_factory() as session:
             query = select(AuditLog)
@@ -167,7 +167,7 @@ class DatabaseRepository:
                 query = query.where(AuditLog.action == action)
             query = query.order_by(AuditLog.created_at.desc()).limit(limit)
             result = await session.execute(query)
-            return cast(List[AuditLog], result.scalars().all())
+            return cast(list[AuditLog], result.scalars().all())
 
 
 # Global instance

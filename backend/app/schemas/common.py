@@ -1,6 +1,4 @@
-from datetime import datetime
 from enum import StrEnum
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,7 +34,7 @@ class ErrorInfo(Contract):
     code: str = Field(description="e.g. CIRCUIT_OPEN, TIMEOUT, BUDGET_EXCEEDED")
     message: str
     retryable: bool = False
-    dependency: Optional[str] = None
+    dependency: str | None = None
 
 
 class BudgetUsage(Contract):

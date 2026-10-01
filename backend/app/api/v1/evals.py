@@ -1,9 +1,10 @@
-from typing import Optional, List, Any
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..deps import get_current_user
-from ...schemas.evals import AdversarialCase, EvalReport, EvalResult
 from ...core.logging import get_logger
+from ...schemas.evals import EvalReport
+from ..deps import get_current_user
 
 logger = get_logger(__name__)
 
@@ -31,8 +32,8 @@ async def run_evals(current_user: dict[str, Any] = Depends(get_current_user)) ->
     return {"eval_run_id": eval_id, "status": "running"}
 
 
-@router.get("", response_model=List[dict[str, Any]])
-async def list_evals(current_user: dict[str, Any] = Depends(get_current_user)) -> List[dict[str, Any]]:
+@router.get("", response_model=list[dict[str, Any]])
+async def list_evals(current_user: dict[str, Any] = Depends(get_current_user)) -> list[dict[str, Any]]:
     """List evaluation runs."""
     return list(_eval_runs.values())
 

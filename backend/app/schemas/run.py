@@ -1,15 +1,15 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 
-from .common import Contract, BudgetUsage, ErrorInfo
+from .answer import FinalAnswer
+from .common import BudgetUsage, Contract, ErrorInfo
 from .intent import IntentType
 from .plan import Plan
-from .answer import FinalAnswer
-from .verification import VerificationReport, Verdict
-from .tools import ToolResult, ToolName, ToolArgs
+from .tools import ToolArgs, ToolName, ToolResult
+from .verification import Verdict, VerificationReport
 
 
 class RunStatus(StrEnum):
@@ -27,7 +27,7 @@ class RunOptions(Contract):
     max_revisions: int = Field(default=2, ge=0, le=3)
     verifier_strictness: Literal["standard", "strict"] = "standard"
     approval_threshold: Literal["low", "medium", "high"] = "high"
-    thread_id: Optional[str] = None
+    thread_id: str | None = None
 
 
 class CreateRunRequest(Contract):
@@ -45,28 +45,28 @@ class ApprovalRequest(Contract):
 
 class ApprovalDecision(Contract):
     approved: bool
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class RunSummary(Contract):
     id: str
     task: str
     status: RunStatus
-    intent: Optional[IntentType] = None
-    verdict: Optional[Verdict] = None
-    verifier_score: Optional[float] = None
+    intent: IntentType | None = None
+    verdict: Verdict | None = None
+    verifier_score: float | None = None
     budget: BudgetUsage
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class RunDetail(RunSummary):
-    plan: Optional[Plan] = None
+    plan: Plan | None = None
     results: list[ToolResult] = Field(default_factory=list)
-    answer: Optional[FinalAnswer] = None
-    report: Optional[VerificationReport] = None
-    error: Optional[ErrorInfo] = None
-    langfuse_trace_url: Optional[str] = None
+    answer: FinalAnswer | None = None
+    report: VerificationReport | None = None
+    error: ErrorInfo | None = None
+    langfuse_trace_url: str | None = None
 
 
 class ErrorResponse(Contract):

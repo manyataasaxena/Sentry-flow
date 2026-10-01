@@ -1,27 +1,37 @@
 """SentryFlow LangGraph agent orchestration."""
 
-from langgraph.graph import StateGraph, END
+from typing import Any
+
+from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .state import RunState, as_update, StateUpdate
-from ..core.observability import observe
+from ..core.fallbacks import get_finalizer_fallback, get_planner_fallback, get_verifier_fallback
 from ..core.llm_gateway import llm_gateway
-from ..core.fallbacks import get_planner_fallback, get_verifier_fallback, get_finalizer_fallback
 from ..core.logging import get_logger
+from ..core.observability import observe
+from ..schemas.answer import FinalAnswer
+from ..schemas.common import ErrorInfo, RiskLevel
 from ..schemas.intent import IntentClassification
 from ..schemas.plan import Plan
-from ..schemas.tools import ToolResult, ToolStatus, ToolName, SearchOutput, FetchOutput, CalcOutput, KbOutput, WebhookOutput
+from ..schemas.run import ApprovalDecision, RunStatus
+from ..schemas.tools import (
+    CalcOutput,
+    FetchOutput,
+    KbOutput,
+    SearchOutput,
+    ToolName,
+    ToolResult,
+    ToolStatus,
+    WebhookOutput,
+)
 from ..schemas.verification import VerificationReport
-from ..schemas.answer import FinalAnswer
-from ..schemas.run import RunStatus, ApprovalDecision
-from ..schemas.common import RiskLevel, ErrorInfo
-from typing import Optional, List, Dict, Any, Sequence
+from .state import RunState, StateUpdate, as_update
 
 logger = get_logger(__name__)
 
 
 @observe(name="intake_guard")
-async def intake_guard(state: RunState) -> Dict[str, object]:
+async def intake_guard(state: RunState) -> dict[str, object]:
     """Validate and classify the user task."""
     try:
         response = await llm_gateway.structured(
@@ -40,7 +50,7 @@ async def intake_guard(state: RunState) -> Dict[str, object]:
 
 
 @observe(name="planner")
-async def planner(state: RunState) -> Dict[str, object]:
+async def planner(state: RunState) -> dict[str, object]:
     """Create an execution plan based on the classified intent."""
     if not state.intent:
         fallback = get_planner_fallback()
@@ -63,7 +73,7 @@ async def planner(state: RunState) -> Dict[str, object]:
 
 
 @observe(name="approval_gate")
-async def approval_gate(state: RunState) -> Dict[str, object]:
+async def approval_gate(state: RunState) -> dict[str, object]:
     """Review and approve the plan before execution."""
     if not state.plan or not state.plan.steps:
         return as_update(StateUpdate(status=RunStatus.BLOCKED, approval=ApprovalDecision(approved=False, note="No plan to approve")))
@@ -75,12 +85,12 @@ async def approval_gate(state: RunState) -> Dict[str, object]:
 
 
 @observe(name="worker")
-async def worker(state: RunState) -> Dict[str, object]:
+async def worker(state: RunState) -> dict[str, object]:
     """Execute the approved plan steps."""
     if not state.plan or not state.plan.steps:
         return as_update(StateUpdate(status=RunStatus.BLOCKED, results=[]))
 
-    results: List[ToolResult] = []
+    results: list[ToolResult] = []
     for step in state.plan.steps:
         try:
             result = await _execute_step(step)
@@ -165,7 +175,7 @@ async def _execute_step(step: Any) -> ToolResult:
 
 
 @observe(name="verifier")
-async def verifier(state: RunState) -> Dict[str, object]:
+async def verifier(state: RunState) -> dict[str, object]:
     """Verify the results and provide feedback."""
     try:
         response = await llm_gateway.structured(
@@ -184,7 +194,7 @@ async def verifier(state: RunState) -> Dict[str, object]:
 
 
 @observe(name="finalize")
-async def finalize(state: RunState) -> Dict[str, object]:
+async def finalize(state: RunState) -> dict[str, object]:
     """Create the final answer based on all results."""
     try:
         response = await llm_gateway.structured(

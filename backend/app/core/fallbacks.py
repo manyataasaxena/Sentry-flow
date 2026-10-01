@@ -1,13 +1,11 @@
-from typing import Optional, List
 
-from ..core.config import settings
 from ..core.logging import get_logger
-from ..schemas.intent import IntentType, IntentClassification
-from ..schemas.plan import Plan, PlanStep
-from ..schemas.tools import WebSearchArgs, ToolArgs, ToolResult, ToolStatus
-from ..schemas.verification import VerificationReport, Verdict
-from ..schemas.answer import FinalAnswer, Citation
+from ..schemas.answer import FinalAnswer
 from ..schemas.common import RiskLevel
+from ..schemas.intent import IntentClassification, IntentType
+from ..schemas.plan import Plan, PlanStep
+from ..schemas.tools import ToolResult, ToolStatus, WebSearchArgs
+from ..schemas.verification import Verdict, VerificationReport
 
 logger = get_logger(__name__)
 
@@ -82,11 +80,11 @@ def get_planner_fallback() -> "_PlannerFallback":
 
 class _PlannerFallback:
     """Planner fallback implementation."""
-    
+
     def classify_intent(self, task: str) -> IntentClassification:
         """Classify intent using rule-based approach."""
         task_lower = task.lower()
-        
+
         if any(word in task_lower for word in ["search", "find", "lookup", "research"]):
             intent_type = IntentType.RESEARCH
         elif any(word in task_lower for word in ["calculate", "compute", "math", "sum", "average"]):
@@ -95,18 +93,18 @@ class _PlannerFallback:
             intent_type = IntentType.KNOWLEDGE_QA
         else:
             intent_type = IntentType.RESEARCH
-            
+
         return IntentClassification(
             intent=intent_type,
             confidence=0.6,
             rationale="Classified by fallback rules"
         )
-    
-    def create_plan(self, task: str, intent: Optional[IntentClassification] = None) -> Plan:
+
+    def create_plan(self, task: str, intent: IntentClassification | None = None) -> Plan:
         """Create a plan using rule-based approach."""
         if intent is None:
             intent = self.classify_intent(task)
-            
+
         return rule_based_plan(intent)
 
 
@@ -117,12 +115,12 @@ def get_verifier_fallback() -> "_VerifierFallback":
 
 class _VerifierFallback:
     """Verifier fallback implementation."""
-    
-    def verify(self, task: str, results: List[ToolResult]) -> VerificationReport:
+
+    def verify(self, task: str, results: list[ToolResult]) -> VerificationReport:
         """Verify results using rule-based approach."""
         successful_results = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
         total_results = len(results)
-        
+
         if total_results == 0:
             score = 0.0
             verdict = Verdict.REVISE
@@ -135,7 +133,7 @@ class _VerifierFallback:
         else:
             score = 30.0
             verdict = Verdict.BLOCK
-            
+
         return VerificationReport(
             verdict=verdict,
             score=score,
@@ -152,13 +150,13 @@ def get_finalizer_fallback() -> "_FinalizerFallback":
 
 class _FinalizerFallback:
     """Finalizer fallback implementation."""
-    
-    def create_final_answer(self, task: str, results: List[ToolResult]) -> FinalAnswer:
+
+    def create_final_answer(self, task: str, results: list[ToolResult]) -> FinalAnswer:
         """Create final answer using rule-based approach."""
         successful_results = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
-        
+
         answer = f"Based on your task '{task}', I executed {successful_results} steps. "
-        
+
         if successful_results > 0:
             answer += "Here are the key findings:\n"
             for i, result in enumerate(results):
@@ -168,7 +166,7 @@ class _FinalizerFallback:
                     answer += f"- Step {i+1}: Failed - {result.error.message if result.error else 'Unknown error'}\n"
         else:
             answer += "No steps were successfully completed. Please try a different approach."
-            
+
         return FinalAnswer(
             answer=answer,
             confidence=0.5 if successful_results > 0 else 0.2,

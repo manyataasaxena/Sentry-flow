@@ -1,14 +1,14 @@
 from datetime import datetime
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .common import Contract, AgentName, ErrorInfo
-from .plan import Plan
 from .answer import FinalAnswer
-from .tools import ToolResult, ToolName
-from .verification import VerificationReport
+from .common import AgentName, Contract, ErrorInfo
+from .plan import Plan
 from .run import ApprovalRequest, RunStatus
+from .tools import ToolName, ToolResult
+from .verification import VerificationReport
 
 
 class EventBase(Contract):
@@ -67,7 +67,7 @@ class BreakerChanged(EventBase):
 class RunCompleted(EventBase):
     type: Literal["run.completed"] = "run.completed"
     status: RunStatus
-    answer: Optional[FinalAnswer] = None
+    answer: FinalAnswer | None = None
 
 
 class RunFailed(EventBase):

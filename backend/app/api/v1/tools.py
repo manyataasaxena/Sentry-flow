@@ -1,10 +1,11 @@
-from typing import List, Any
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..deps import get_current_user
-from ...schemas.tools import ToolSpec, ToolName
-from ...schemas.common import RiskLevel
 from ...core.logging import get_logger
+from ...schemas.common import RiskLevel
+from ...schemas.tools import ToolName, ToolSpec
+from ..deps import get_current_user
 
 logger = get_logger(__name__)
 
@@ -65,8 +66,8 @@ _tool_specs = [
 ]
 
 
-@router.get("", response_model=List[ToolSpec])
-async def list_tools(current_user: dict[str, Any] = Depends(get_current_user)) -> List[ToolSpec]:
+@router.get("", response_model=list[ToolSpec])
+async def list_tools(current_user: dict[str, Any] = Depends(get_current_user)) -> list[ToolSpec]:
     """List available tools."""
     return _tool_specs
 

@@ -4,7 +4,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ..core.config import settings
-from ..core.errors import SentryFlowError
 
 security = HTTPBearer(auto_error=False)
 

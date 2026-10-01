@@ -1,7 +1,6 @@
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from typing import Optional
-import json
+
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from ...core.logging import get_logger
 
@@ -17,7 +16,7 @@ _connections: dict[str, list[WebSocket]] = {}
 async def websocket_endpoint(
     websocket: WebSocket,
     run_id: str,
-    last_seq: Optional[int] = Query(None),
+    last_seq: int | None = Query(None),
 ) -> None:
     """WebSocket endpoint for real-time run events."""
     await websocket.accept()

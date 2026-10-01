@@ -1,12 +1,9 @@
-from typing import Optional, Any
+from typing import Any
 
-import asyncpg  # type: ignore[import-untyped]
 from asyncpg.pool import PoolConnectionProxy  # type: ignore[import-untyped]
 
-from ..core.config import settings
-from ..core.logging import get_logger
 from ..core.errors import SentryFlowError
-
+from ..core.logging import get_logger
 from .postgres import postgres
 
 logger = get_logger(__name__)
@@ -16,7 +13,7 @@ class CheckpointerAdapter:
     """LangGraph checkpointer adapter using PostgreSQL."""
 
     def __init__(self) -> None:
-        self._conn: Optional[PoolConnectionProxy] = None
+        self._conn: PoolConnectionProxy | None = None
 
     async def setup(self) -> None:
         """Initialize checkpointer tables."""
@@ -40,7 +37,7 @@ class CheckpointerAdapter:
             logger.error("Failed to setup checkpointer", error=str(e))
             raise SentryFlowError("Checkpointer setup failed", error_info={"error": str(e)})
 
-    async def get(self, thread_id: str, checkpoint_id: str) -> Optional[dict[str, Any]]:
+    async def get(self, thread_id: str, checkpoint_id: str) -> dict[str, Any] | None:
         """Get a specific checkpoint."""
         try:
             async with await postgres.get_connection() as conn:
@@ -73,7 +70,7 @@ class CheckpointerAdapter:
         thread_id: str,
         checkpoint_id: str,
         checkpoint: dict[str, Any],
-        parent_checkpoint_id: Optional[str] = None,
+        parent_checkpoint_id: str | None = None,
     ) -> None:
         """Put a checkpoint."""
         try:

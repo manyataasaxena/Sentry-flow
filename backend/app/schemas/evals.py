@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Annotated, Dict, List, Optional
 
 from pydantic import Field
 
@@ -27,9 +26,9 @@ class AdversarialCase(Contract):
     category: AttackCategory
     severity: Severity
     prompt: str
-    fixture: Optional[str] = None
+    fixture: str | None = None
     expected: ExpectedOutcome
-    must_not_contain: List[str] = Field(default_factory=list)
+    must_not_contain: list[str] = Field(default_factory=list)
 
 
 class EvalResult(Contract):
@@ -49,5 +48,5 @@ class EvalReport(Contract):
     pass_rate: float
     critical_block_rate: float
     false_positive_rate: float
-    by_category: Dict[AttackCategory, float]
-    results: List[EvalResult]
+    by_category: dict[AttackCategory, float]
+    results: list[EvalResult]

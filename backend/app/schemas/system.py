@@ -1,7 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal, Optional, List
-
-from pydantic import Field
+from typing import Literal
 
 from .common import Contract
 
@@ -10,14 +8,14 @@ class BreakerStatus(Contract):
     dependency: str
     state: Literal["closed", "open", "half_open"]
     failure_count: int
-    last_failure_at: Optional[datetime] = None
-    opens_at: Optional[datetime] = None
+    last_failure_at: datetime | None = None
+    opens_at: datetime | None = None
 
 
 class HealthReport(Contract):
     status: Literal["ok", "degraded", "down"]
-    postgres_ms: Optional[float] = None
-    redis_ms: Optional[float] = None
+    postgres_ms: float | None = None
+    redis_ms: float | None = None
     llm_primary: Literal["ok", "degraded", "down"]
-    breakers: List[BreakerStatus]
+    breakers: list[BreakerStatus]
     chaos_enabled: bool

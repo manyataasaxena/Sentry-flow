@@ -1,8 +1,9 @@
-from typing import List, Optional, Any
-from fastapi import APIRouter, Depends, Query
+from typing import Any
 
-from ..deps import get_current_user
+from fastapi import APIRouter, Depends
+
 from ...core.logging import get_logger
+from ..deps import get_current_user
 
 logger = get_logger(__name__)
 
@@ -15,12 +16,12 @@ _audit_logs: list[dict[str, Any]] = [
 ]
 
 
-@router.get("", response_model=List[dict[str, Any]])
+@router.get("", response_model=list[dict[str, Any]])
 async def list_audit_logs(
-    actor_id: Optional[str] = None,
-    action: Optional[str] = None,
+    actor_id: str | None = None,
+    action: str | None = None,
     current_user: dict[str, Any] = Depends(get_current_user),
-) -> List[dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List audit logs."""
     logs = _audit_logs
     if actor_id:

@@ -1,10 +1,11 @@
-from typing import TypeVar, Optional, Any
-from pydantic import BaseModel, FieldInfo
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
 
 from ..core.config import settings
+from ..core.errors import PermanentError
 from ..core.logging import get_logger
 from ..core.ports import LLMPort
-from ..core.errors import PermanentError
 
 logger = get_logger(__name__)
 
@@ -55,9 +56,9 @@ class LLMGateway:
     """LLM gateway that selects the appropriate provider."""
 
     def __init__(self) -> None:
-        self._fake_llm: Optional[LLMPort] = FakeLLM()
-        self._primary: Optional[LLMPort] = None
-        self._fallback: Optional[LLMPort] = None
+        self._fake_llm: LLMPort | None = FakeLLM()
+        self._primary: LLMPort | None = None
+        self._fallback: LLMPort | None = None
 
         if settings.MOCK_LLM:
             self._primary = self._fake_llm
