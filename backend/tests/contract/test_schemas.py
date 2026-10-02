@@ -93,12 +93,12 @@ def test_tool_result_rejects_extra():
 
 
 def test_plan_step_id_pattern():
-    step = PlanStep(step_id="s1", goal="x", args=WebSearchArgs(query="x"))
+    step = PlanStep(step_id="s1", goal="x", args=WebSearchArgs(query="xx"))
     assert step.step_id == "s1"
 
 
 def test_plan_rejects_too_many_steps():
-    steps = [PlanStep(step_id=f"s{i}", goal="x", args=WebSearchArgs(query="x")) for i in range(9)]
+    steps = [PlanStep(step_id=f"s{i}", goal="x", args=WebSearchArgs(query="xx")) for i in range(9)]
     with pytest.raises(Exception):
         Plan(
             intent=IntentClassification(intent=IntentType.RESEARCH, confidence=0.9, rationale="x"),
@@ -109,7 +109,7 @@ def test_plan_rejects_too_many_steps():
 
 
 def test_final_answer_citation_step_id():
-    ans = FinalAnswer(answer="x", citations=[Citation(step_id="s1", source="url")])
+    ans = FinalAnswer(answer="x", citations=[Citation(step_id="s1", source="url")], confidence=0.9)
     assert ans.citations[0].step_id == "s1"
 
 
@@ -197,7 +197,7 @@ def test_node_completed_valid():
 def test_plan_created_valid():
     plan = Plan(
         intent=IntentClassification(intent=IntentType.RESEARCH, confidence=0.9, rationale="x"),
-        steps=[PlanStep(step_id="s1", goal="x", args=WebSearchArgs(query="x"))],
+        steps=[PlanStep(step_id="s1", goal="x", args=WebSearchArgs(query="xx"))],
         strategy_summary="x",
         risk=RiskLevel.LOW,
     )
@@ -218,10 +218,9 @@ def test_tool_completed_valid():
 
 def test_verifier_reported_valid():
     report = VerificationReport(
-        mode="output",
-        verdict="pass",
+        verdict=Verdict.PASS,
         score=0.9,
-        checks=[],
+        feedback="all good",
     )
     ev = VerifierReported(seq=1, run_id="r", ts="2024-01-01T00:00:00Z", report=report)
     assert ev.report.verdict == "pass"
@@ -248,9 +247,9 @@ def test_run_failed_valid():
         seq=1,
         run_id="r",
         ts="2024-01-01T00:00:00Z",
-        error={"code": "X", "message": "m", "retryable": False, "dependency": None},
+        error=ErrorInfo(code="X", message="m", retryable=False, dependency=None),
     )
-    assert ev.error["code"] == "X"
+    assert ev.error.code == "X"
 
 
 def test_heartbeat_valid():
@@ -322,7 +321,7 @@ def test_health_report_valid():
 
 
 def test_run_state_defaults():
-    state = RunState(run_id="r", task="x")
+    state = RunState(run_id="r", task="x", options=RunOptions())
     assert state.status == "running"
     assert state.revision_count == 0
 
@@ -333,7 +332,7 @@ def test_state_update_partial():
 
 
 def test_as_update_excludes_unset():
-    update = StateUpdate(intent=None)
+    update = StateUpdate()
     dumped = as_update(update)
     assert "intent" not in dumped
 
