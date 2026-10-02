@@ -25,7 +25,7 @@ async def list_audit_logs(
     """List audit logs."""
     logs = _audit_logs
     if actor_id:
-        logs = [l for l in logs if l.get("actor_id") == actor_id]
+        logs = [log_entry for log_entry in logs if log_entry.get("actor_id") == actor_id]
     if action:
-        logs = [l for l in logs if l.get("action") == action]
+        logs = [log_entry for log_entry in logs if log_entry.get("action") == action]
     return logs

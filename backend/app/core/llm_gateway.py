@@ -101,7 +101,7 @@ class LLMGateway:
             except Exception as fallback_error:
                 logger.error(f"Fallback LLM also failed: {fallback_error}")
                 error_info: dict[str, Any] = {"code": "LLM_FAILURE"}
-                raise PermanentError(f"LLM call failed: {e}", error_info=error_info)
+                raise PermanentError(f"LLM call failed: {e}", error_info=error_info) from e
 
 
 # Global instance

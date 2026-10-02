@@ -35,7 +35,7 @@ class CheckpointerAdapter:
                 logger.info("Checkpointer tables initialized")
         except Exception as e:
             logger.error("Failed to setup checkpointer", error=str(e))
-            raise SentryFlowError("Checkpointer setup failed", error_info={"error": str(e)})
+            raise SentryFlowError("Checkpointer setup failed", error_info={"error": str(e)}) from e
 
     async def get(self, thread_id: str, checkpoint_id: str) -> dict[str, Any] | None:
         """Get a specific checkpoint."""
@@ -49,7 +49,7 @@ class CheckpointerAdapter:
                 return row["checkpoint"] if row else None
         except Exception as e:
             logger.error("Failed to get checkpoint", error=str(e))
-            raise SentryFlowError("Get checkpoint failed", error_info={"error": str(e)})
+            raise SentryFlowError("Get checkpoint failed", error_info={"error": str(e)}) from e
 
     async def list(self, thread_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """List checkpoints for a thread."""
@@ -63,7 +63,7 @@ class CheckpointerAdapter:
                 return [{"checkpoint_id": row["checkpoint_id"], "created_at": row["created_at"]} for row in rows]
         except Exception as e:
             logger.error("Failed to list checkpoints", error=str(e))
-            raise SentryFlowError("List checkpoints failed", error_info={"error": str(e)})
+            raise SentryFlowError("List checkpoints failed", error_info={"error": str(e)}) from e
 
     async def put(
         self,
@@ -88,7 +88,7 @@ class CheckpointerAdapter:
                 )
         except Exception as e:
             logger.error("Failed to put checkpoint", error=str(e))
-            raise SentryFlowError("Put checkpoint failed", error_info={"error": str(e)})
+            raise SentryFlowError("Put checkpoint failed", error_info={"error": str(e)}) from e
 
     async def delete(self, thread_id: str, checkpoint_id: str) -> None:
         """Delete a checkpoint."""
@@ -101,7 +101,7 @@ class CheckpointerAdapter:
                 )
         except Exception as e:
             logger.error("Failed to delete checkpoint", error=str(e))
-            raise SentryFlowError("Delete checkpoint failed", error_info={"error": str(e)})
+            raise SentryFlowError("Delete checkpoint failed", error_info={"error": str(e)}) from e
 
     async def health_check(self) -> bool:
         """Check if checkpointer is healthy."""

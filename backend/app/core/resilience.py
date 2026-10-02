@@ -90,7 +90,7 @@ async def resilient_call(
             logger.error(f"Fallback also failed for {dependency}: {e}")
             if last_error is not None:
                 raise last_error
-            raise TransientError(f"Fallback failed for {dependency}", error_info={"code": "FALLBACK_FAILED", "dependency": dependency})
+            raise TransientError(f"Fallback failed for {dependency}", error_info={"code": "FALLBACK_FAILED", "dependency": dependency}) from e
 
     if last_error is not None:
         raise last_error

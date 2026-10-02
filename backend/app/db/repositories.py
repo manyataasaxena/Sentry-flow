@@ -28,7 +28,7 @@ class DatabaseRepository:
             logger.info("Database initialized")
         except Exception as e:
             logger.error("Failed to initialize database", error=str(e))
-            raise SentryFlowError("Database initialization failed", error_info={"error": str(e)})
+            raise SentryFlowError("Database initialization failed", error_info={"error": str(e)}) from e
 
     async def close(self) -> None:
         """Close database connection."""

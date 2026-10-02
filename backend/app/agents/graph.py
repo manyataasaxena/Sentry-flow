@@ -116,7 +116,6 @@ async def _execute_step(step: Any) -> ToolResult:
     args = step.args.model_dump() if hasattr(step.args, "model_dump") else {}
 
     if tool_name == ToolName.WEB_SEARCH:
-        query = args.get("query", "")
         return ToolResult(
             step_id=step.step_id,
             tool=tool_name,
