@@ -18,7 +18,8 @@ class CheckpointerAdapter:
     async def setup(self) -> None:
         """Initialize checkpointer tables."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 # Create checkpoints table
                 await conn.executescript("""
                     CREATE TABLE IF NOT EXISTS checkpoints (
@@ -33,6 +34,8 @@ class CheckpointerAdapter:
                     CREATE INDEX IF NOT EXISTS idx_checkpoints_thread_id ON checkpoints(thread_id);
                 """)
                 logger.info("Checkpointer tables initialized")
+            finally:
+                await postgres.release_connection(conn)
         except Exception as e:
             logger.error("Failed to setup checkpointer", error=str(e))
             raise SentryFlowError("Checkpointer setup failed", error_info={"error": str(e)}) from e
@@ -40,13 +43,16 @@ class CheckpointerAdapter:
     async def get(self, thread_id: str, checkpoint_id: str) -> dict[str, Any] | None:
         """Get a specific checkpoint."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 row = await conn.fetchrow(
                     "SELECT checkpoint FROM checkpoints WHERE thread_id = $1 AND checkpoint_id = $2",
                     thread_id,
                     checkpoint_id,
                 )
                 return row["checkpoint"] if row else None
+            finally:
+                await postgres.release_connection(conn)
         except Exception as e:
             logger.error("Failed to get checkpoint", error=str(e))
             raise SentryFlowError("Get checkpoint failed", error_info={"error": str(e)}) from e
@@ -54,13 +60,16 @@ class CheckpointerAdapter:
     async def list(self, thread_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """List checkpoints for a thread."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 rows = await conn.fetch(
                     "SELECT checkpoint_id, created_at FROM checkpoints WHERE thread_id = $1 ORDER BY created_at DESC LIMIT $2",
                     thread_id,
                     limit,
                 )
                 return [{"checkpoint_id": row["checkpoint_id"], "created_at": row["created_at"]} for row in rows]
+            finally:
+                await postgres.release_connection(conn)
         except Exception as e:
             logger.error("Failed to list checkpoints", error=str(e))
             raise SentryFlowError("List checkpoints failed", error_info={"error": str(e)}) from e
@@ -74,7 +83,8 @@ class CheckpointerAdapter:
     ) -> None:
         """Put a checkpoint."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 await conn.execute(
                     """
                     INSERT INTO checkpoints (thread_id, checkpoint_id, parent_checkpoint_id, checkpoint)
@@ -86,6 +96,8 @@ class CheckpointerAdapter:
                     parent_checkpoint_id,
                     checkpoint,
                 )
+            finally:
+                await postgres.release_connection(conn)
         except Exception as e:
             logger.error("Failed to put checkpoint", error=str(e))
             raise SentryFlowError("Put checkpoint failed", error_info={"error": str(e)}) from e
@@ -93,12 +105,15 @@ class CheckpointerAdapter:
     async def delete(self, thread_id: str, checkpoint_id: str) -> None:
         """Delete a checkpoint."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 await conn.execute(
                     "DELETE FROM checkpoints WHERE thread_id = $1 AND checkpoint_id = $2",
                     thread_id,
                     checkpoint_id,
                 )
+            finally:
+                await postgres.release_connection(conn)
         except Exception as e:
             logger.error("Failed to delete checkpoint", error=str(e))
             raise SentryFlowError("Delete checkpoint failed", error_info={"error": str(e)}) from e
@@ -106,8 +121,11 @@ class CheckpointerAdapter:
     async def health_check(self) -> bool:
         """Check if checkpointer is healthy."""
         try:
-            async with await postgres.get_connection() as conn:
+            conn = await postgres.get_connection()
+            try:
                 await conn.fetchval("SELECT 1 FROM checkpoints LIMIT 1")
+            finally:
+                await postgres.release_connection(conn)
             return True
         except Exception:
             return False
