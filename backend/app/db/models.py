@@ -1,4 +1,5 @@
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
 
@@ -121,7 +122,7 @@ class KbDocument(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
     body = Column(Text, nullable=False)
-    tsv = Column(Text, nullable=True)  # Full-text search vector
+    tsv = Column(TSVECTOR, nullable=True)  # Full-text search vector
 
     __table_args__ = (
         Index("idx_kb_documents_tsv", tsv, postgresql_using="gin"),
