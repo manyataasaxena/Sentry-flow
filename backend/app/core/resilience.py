@@ -1,15 +1,12 @@
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from typing import TypeVar
 
 from ..core.circuit_breaker import CircuitBreaker
 from ..core.errors import CircuitOpenError, TransientError
 from ..core.logging import get_logger
 
 logger = get_logger(__name__)
-
-T = TypeVar("T")
 
 
 class ResiliencePolicy:
@@ -32,7 +29,7 @@ class ResiliencePolicy:
         self.breaker_recovery_timeout = breaker_recovery_timeout
 
 
-async def resilient_call(
+async def resilient_call[T](
     dependency: str,
     fn: Callable[..., Awaitable[T]],
     *,

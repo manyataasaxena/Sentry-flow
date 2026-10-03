@@ -185,22 +185,22 @@ async def list_runs(
 ) -> list[RunSummary]:
     """List runs with optional filters."""
     runs: list[RunSummary] = []
-        for _run_id, run_data in _runs.items():
-            if user_id and run_data.get("user_id") != user_id:
-                continue
-            if status and run_data.get("status") != status:
-                continue
-            runs.append(RunSummary(
-                    id=str(run_data.get("id", "")),
-                    task=str(run_data.get("task", "")),
-                    status=RunStatus(str(run_data.get("status", "pending"))),
-                    intent=_convert_intent(run_data.get("intent")),
-                    verdict=_convert_verdict(run_data.get("verdict")),
-                    verifier_score=_convert_verifier_score(run_data.get("verifier_score")),
-                    budget=_convert_budget(run_data.get("budget")),
-                    created_at=_convert_datetime(run_data.get("created_at"), datetime.now()),
-                    completed_at=_convert_datetime_optional(run_data.get("completed_at")),
-                ))
+    for _run_id, run_data in _runs.items():
+        if user_id and run_data.get("user_id") != user_id:
+            continue
+        if status and run_data.get("status") != status:
+            continue
+        runs.append(RunSummary(
+            id=str(run_data.get("id", "")),
+            task=str(run_data.get("task", "")),
+            status=RunStatus(str(run_data.get("status", "pending"))),
+            intent=_convert_intent(run_data.get("intent")),
+            verdict=_convert_verdict(run_data.get("verdict")),
+            verifier_score=_convert_verifier_score(run_data.get("verifier_score")),
+            budget=_convert_budget(run_data.get("budget")),
+            created_at=_convert_datetime(run_data.get("created_at"), datetime.now()),
+            completed_at=_convert_datetime_optional(run_data.get("completed_at")),
+        ))
     return runs
 
 
