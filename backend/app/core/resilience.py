@@ -34,10 +34,10 @@ class ResiliencePolicy:
 
 async def resilient_call(
     dependency: str,
-    fn: Callable[[], Awaitable[T]],
+    fn: Callable[..., Awaitable[T]],
     *,
     policy: ResiliencePolicy | None = None,
-    fallback: Callable[[], Awaitable[T]] | None = None,
+    fallback: Callable[..., Awaitable[T]] | None = None,
     run_id: str | None = None,
 ) -> T:
     """Execute external call with circuit breaker, retry, timeout, and fallback.
@@ -89,7 +89,7 @@ async def resilient_call(
         except Exception as e:
             logger.error(f"Fallback also failed for {dependency}: {e}")
             if last_error is not None:
-                raise last_error
+                raise last_error from None
             raise TransientError(f"Fallback failed for {dependency}", error_info={"code": "FALLBACK_FAILED", "dependency": dependency}) from e
 
     if last_error is not None:

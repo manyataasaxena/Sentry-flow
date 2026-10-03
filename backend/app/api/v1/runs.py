@@ -185,12 +185,12 @@ async def list_runs(
 ) -> list[RunSummary]:
     """List runs with optional filters."""
     runs: list[RunSummary] = []
-    for run_id, run_data in _runs.items():
-        if user_id and run_data.get("user_id") != user_id:
-            continue
-        if status and run_data.get("status") != status:
-            continue
-        runs.append(RunSummary(
+        for _run_id, run_data in _runs.items():
+            if user_id and run_data.get("user_id") != user_id:
+                continue
+            if status and run_data.get("status") != status:
+                continue
+            runs.append(RunSummary(
                     id=str(run_data.get("id", "")),
                     task=str(run_data.get("task", "")),
                     status=RunStatus(str(run_data.get("status", "pending"))),
