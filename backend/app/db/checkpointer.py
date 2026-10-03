@@ -21,18 +21,18 @@ class CheckpointerAdapter:
             conn = await postgres.get_connection()
             try:
                 # Create checkpoints table
-                await conn.executescript("""
-                    CREATE TABLE IF NOT EXISTS checkpoints (
-                        thread_id TEXT NOT NULL,
-                        checkpoint_id TEXT NOT NULL,
-                        parent_checkpoint_id TEXT,
-                        checkpoint JSONB NOT NULL,
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        PRIMARY KEY (thread_id, checkpoint_id)
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_checkpoints_thread_id ON checkpoints(thread_id);
-                """)
+                await conn.execute("""
+                                    CREATE TABLE IF NOT EXISTS checkpoints (
+                                        thread_id TEXT NOT NULL,
+                                        checkpoint_id TEXT NOT NULL,
+                                        parent_checkpoint_id TEXT,
+                                        checkpoint JSONB NOT NULL,
+                                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                                        PRIMARY KEY (thread_id, checkpoint_id)
+                                    );
+                
+                                    CREATE INDEX IF NOT EXISTS idx_checkpoints_thread_id ON checkpoints(thread_id);
+                                """)
                 logger.info("Checkpointer tables initialized")
             finally:
                 await postgres.release_connection(conn)
