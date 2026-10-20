@@ -1,5 +1,7 @@
 from datetime import datetime
 from typing import Any
+import asyncio
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -12,12 +14,15 @@ from ...schemas.run import (
     ApprovalDecision,
     CreateRunRequest,
     RunDetail,
+    RunOptions,
     RunStatus,
     RunSummary,
 )
 from ...schemas.tools import ToolResult
 from ...schemas.verification import Verdict, VerificationReport
 from ..deps import get_current_user
+from ...agents.graph import agent_graph
+from ...agents.state import RunState
 
 logger = get_logger(__name__)
 
@@ -125,6 +130,72 @@ def _convert_seq(val: object) -> int:
     return 0
 
 
+async def _execute_run_graph(run_id: str, task: str, options: dict[str, object]) -> None:
+    """Background task to execute the agent graph for a run."""
+    try:
+        # Update status to running
+        if run_id in _runs:
+            _runs[run_id]["status"] = RunStatus.RUNNING
+        
+        logger.info("Starting graph execution", run_id=run_id, task=task[:50])
+        
+        # Build initial state
+        initial_state = RunState(
+            run_id=run_id,
+            task=task,
+            options=RunOptions.model_validate(options) if options else RunOptions(),
+            status=RunStatus.RUNNING,
+        )
+        
+        # Execute the graph (config with thread_id is harmless even without checkpointer)
+        config = {"configurable": {"thread_id": run_id}}
+        final_state = await agent_graph.ainvoke(initial_state, config=config)
+        
+        # Determine final status: use graph's status, but respect BLOCK verdict
+        final_status = final_state.status
+        if final_state.report and final_state.report.verdict == Verdict.BLOCK:
+            final_status = RunStatus.BLOCKED
+        
+        # Update run record with results (store model instances for _convert_* helpers)
+        if run_id in _runs:
+            run_data = _runs[run_id]
+            run_data.update({
+                "status": final_status,
+                "intent": final_state.intent.intent.value if final_state.intent else None,
+                "plan": final_state.plan,
+                "results": final_state.results,
+                "answer": final_state.draft,
+                "report": final_state.report,
+                "verdict": final_state.report.verdict if final_state.report else None,
+                "verifier_score": final_state.report.score if final_state.report else None,
+                "budget": final_state.budget,
+                "completed_at": datetime.now() if final_status in [
+                    RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.BLOCKED, RunStatus.CANCELLED
+                ] else None,
+            })
+            
+            logger.info(
+                "Graph execution completed", 
+                run_id=run_id, 
+                status=final_status,
+                answer_length=len(final_state.draft.answer) if final_state.draft else 0
+            )
+            
+    except Exception as e:
+        logger.error("Graph execution failed", run_id=run_id, error=str(e), exc_info=True)
+        # Update run with failure status
+        if run_id in _runs:
+            _runs[run_id].update({
+                "status": RunStatus.FAILED,
+                "error": ErrorInfo(
+                    code="GRAPH_EXECUTION_ERROR",
+                    message=str(e),
+                    retryable=False
+                ),
+                "completed_at": datetime.now(),
+            })
+
+
 @router.post("", response_model=RunSummary, status_code=202)
 async def create_run(
     request: CreateRunRequest,
@@ -132,7 +203,7 @@ async def create_run(
     idempotency_key: str | None = Query(None, alias="Idempotency-Key"),
 ) -> RunSummary:
     """Create a new run."""
-    run_id = f"run-{len(_runs) + 1}"
+    run_id = str(uuid.uuid4())
 
     # Check idempotency
     if idempotency_key and idempotency_key in _runs:
@@ -154,7 +225,7 @@ async def create_run(
         "task": request.task,
         "status": RunStatus.PENDING,
         "user_id": current_user.get("id"),
-        "options": request.options,
+        "options": request.options.model_dump() if request.options else RunOptions().model_dump(),
         "created_at": datetime.now(),
         "budget": BudgetUsage(),
     }
@@ -163,6 +234,13 @@ async def create_run(
     _events[run_id] = []
 
     logger.info("Run created", run_id=run_id, task=request.task[:50])
+
+    # Launch graph execution as background task
+    asyncio.create_task(_execute_run_graph(
+        run_id=run_id,
+        task=request.task,
+        options=request.options.model_dump() if request.options else RunOptions().model_dump()
+    ))
 
     return RunSummary(
         id=run_id,
