@@ -40,4 +40,4 @@ class StateUpdate(BaseModel):
 
 
 def as_update(update: StateUpdate) -> dict[str, object]:
-    return update.model_dump(exclude_unset=True)
+    return {name: getattr(update, name) for name in update.model_fields_set}
