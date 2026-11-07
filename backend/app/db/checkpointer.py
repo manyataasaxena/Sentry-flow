@@ -30,7 +30,7 @@ class CheckpointerAdapter:
                                         created_at TIMESTAMPTZ DEFAULT NOW(),
                                         PRIMARY KEY (thread_id, checkpoint_id)
                                     );
-                
+
                                     CREATE INDEX IF NOT EXISTS idx_checkpoints_thread_id ON checkpoints(thread_id);
                                 """)
                 logger.info("Checkpointer tables initialized")

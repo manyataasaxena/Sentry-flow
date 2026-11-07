@@ -1,10 +1,12 @@
-from datetime import datetime
-from typing import Any
 import asyncio
 import uuid
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from ...agents.graph import agent_graph
+from ...agents.state import RunState
 from ...core.logging import get_logger
 from ...schemas.answer import FinalAnswer
 from ...schemas.common import BudgetUsage, ErrorInfo
@@ -21,8 +23,6 @@ from ...schemas.run import (
 from ...schemas.tools import ToolResult
 from ...schemas.verification import Verdict, VerificationReport
 from ..deps import get_current_user
-from ...agents.graph import agent_graph
-from ...agents.state import RunState
 
 logger = get_logger(__name__)
 
@@ -136,9 +136,9 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
         # Update status to running
         if run_id in _runs:
             _runs[run_id]["status"] = RunStatus.RUNNING
-        
+
         logger.info("Starting graph execution", run_id=run_id, task=task[:50])
-        
+
         # Build initial state
         initial_state = RunState(
             run_id=run_id,
@@ -146,16 +146,16 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
             options=RunOptions.model_validate(options) if options else RunOptions(),
             status=RunStatus.RUNNING,
         )
-        
+
         # Execute the graph (config with thread_id is harmless even without checkpointer)
         config = {"configurable": {"thread_id": run_id}}
         final_state = await agent_graph.ainvoke(initial_state, config=config)
-        
+
         # Determine final status: use graph's status, but respect BLOCK verdict
         final_status = final_state.status
         if final_state.report and final_state.report.verdict == Verdict.BLOCK:
             final_status = RunStatus.BLOCKED
-        
+
         # Update run record with results (store model instances for _convert_* helpers)
         if run_id in _runs:
             run_data = _runs[run_id]
@@ -173,14 +173,14 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
                     RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.BLOCKED, RunStatus.CANCELLED
                 ] else None,
             })
-            
+
             logger.info(
-                "Graph execution completed", 
-                run_id=run_id, 
+                "Graph execution completed",
+                run_id=run_id,
                 status=final_status,
                 answer_length=len(final_state.draft.answer) if final_state.draft else 0
             )
-            
+
     except Exception as e:
         logger.error("Graph execution failed", run_id=run_id, error=str(e), exc_info=True)
         # Update run with failure status
