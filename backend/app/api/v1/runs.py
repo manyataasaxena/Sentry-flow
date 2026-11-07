@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from langchain_core.runnables import RunnableConfig
 
 from ...agents.graph import agent_graph
 from ...agents.state import RunState
@@ -148,8 +149,12 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
         )
 
         # Execute the graph (config with thread_id is harmless even without checkpointer)
-        config = {"configurable": {"thread_id": run_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": run_id}}
         final_state = await agent_graph.ainvoke(initial_state, config=config)
+
+        # Normalize final state (ainvoke may return a dict depending on LangGraph version)
+        if isinstance(final_state, dict):
+            final_state = RunState.model_validate(final_state)
 
         # Determine final status: use graph's status, but respect BLOCK verdict
         final_status = final_state.status
