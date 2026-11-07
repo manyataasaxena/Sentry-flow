@@ -21,69 +21,69 @@ class DatabaseRepository:
         )
 
     async def init(self) -> None:
-            """Initialize database and create tables."""
-            try:
-                async with self._engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
-                logger.info("Database initialized")
-                await self._seed_kb_documents()
-            except Exception as e:
-                logger.error("Failed to initialize database", error=str(e))
-                raise SentryFlowError("Database initialization failed", error_info={"error": str(e)}) from e
-    
-        async def _seed_kb_documents(self) -> None:
-            """Seed KB documents if table is empty."""
-            async with self._session_factory() as session:
-                result = await session.execute(select(KbDocument).limit(1))
-                if result.scalar_one_or_none() is not None:
-                    return  # Already seeded
-    
-                seed_docs = [
-                    KbDocument(
-                        title="Python Programming Language",
-                        body="Python is a high-level, interpreted programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming.",
-                    ),
-                    KbDocument(
-                        title="Quantum Computing Basics",
-                        body="Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to perform computations. Qubits can represent 0, 1, or both simultaneously, enabling parallel processing for certain problems.",
-                    ),
-                    KbDocument(
-                        title="Capital Cities of Europe",
-                        body="Major European capitals include: Paris (France), Berlin (Germany), Rome (Italy), Madrid (Spain), London (UK), Amsterdam (Netherlands), Vienna (Austria), Warsaw (Poland), Stockholm (Sweden), and Copenhagen (Denmark).",
-                    ),
-                    KbDocument(
-                        title="Machine Learning Fundamentals",
-                        body="Machine learning is a subset of AI that enables systems to learn from data without explicit programming. Key types include supervised learning (classification, regression), unsupervised learning (clustering, dimensionality reduction), and reinforcement learning.",
-                    ),
-                    KbDocument(
-                        title="Web Development with FastAPI",
-                        body="FastAPI is a modern, fast web framework for building APIs with Python 3.7+ based on standard Python type hints. It provides automatic OpenAPI documentation, dependency injection, and high performance through Starlette and Pydantic.",
-                    ),
-                    KbDocument(
-                        title="PostgreSQL Database",
-                        body="PostgreSQL is an advanced open-source relational database with support for JSON, full-text search, and advanced indexing. It's known for reliability, feature robustness, and performance.",
-                    ),
-                    KbDocument(
-                        title="Redis In-Memory Store",
-                        body="Redis is an in-memory data structure store used as a database, cache, and message broker. It supports strings, hashes, lists, sets, and sorted sets with atomic operations.",
-                    ),
-                    KbDocument(
-                        title="LangGraph Orchestration",
-                        body="LangGraph is a library for building stateful, multi-actor applications with LLMs. It provides graph-based orchestration with cycles, persistence, and human-in-the-loop capabilities for complex agent workflows.",
-                    ),
-                    KbDocument(
-                        title="Docker Containerization",
-                        body="Docker is a platform for developing, shipping, and running applications in containers. Containers package code and dependencies together, ensuring consistency across environments.",
-                    ),
-                    KbDocument(
-                        title="Kubernetes Orchestration",
-                        body="Kubernetes (K8s) is an open-source container orchestration platform that automates deployment, scaling, and management of containerized applications. It provides service discovery, load balancing, and self-healing.",
-                    ),
-                ]
-    
-                session.add_all(seed_docs)
-                await session.commit()
-                logger.info("Seeded KB documents", count=len(seed_docs))
+        """Initialize database and create tables."""
+        try:
+            async with self._engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database initialized")
+            await self._seed_kb_documents()
+        except Exception as e:
+            logger.error("Failed to initialize database", error=str(e))
+            raise SentryFlowError("Database initialization failed", error_info={"error": str(e)}) from e
+
+    async def _seed_kb_documents(self) -> None:
+        """Seed KB documents if table is empty."""
+        async with self._session_factory() as session:
+            result = await session.execute(select(KbDocument).limit(1))
+            if result.scalar_one_or_none() is not None:
+                return  # Already seeded
+
+            seed_docs = [
+                KbDocument(
+                    title="Python Programming Language",
+                    body="Python is a high-level, interpreted programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming.",
+                ),
+                KbDocument(
+                    title="Quantum Computing Basics",
+                    body="Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to perform computations. Qubits can represent 0, 1, or both simultaneously, enabling parallel processing for certain problems.",
+                ),
+                KbDocument(
+                    title="Capital Cities of Europe",
+                    body="Major European capitals include: Paris (France), Berlin (Germany), Rome (Italy), Madrid (Spain), London (UK), Amsterdam (Netherlands), Vienna (Austria), Warsaw (Poland), Stockholm (Sweden), and Copenhagen (Denmark).",
+                ),
+                KbDocument(
+                    title="Machine Learning Fundamentals",
+                    body="Machine learning is a subset of AI that enables systems to learn from data without explicit programming. Key types include supervised learning (classification, regression), unsupervised learning (clustering, dimensionality reduction), and reinforcement learning.",
+                ),
+                KbDocument(
+                    title="Web Development with FastAPI",
+                    body="FastAPI is a modern, fast web framework for building APIs with Python 3.7+ based on standard Python type hints. It provides automatic OpenAPI documentation, dependency injection, and high performance through Starlette and Pydantic.",
+                ),
+                KbDocument(
+                    title="PostgreSQL Database",
+                    body="PostgreSQL is an advanced open-source relational database with support for JSON, full-text search, and advanced indexing. It's known for reliability, feature robustness, and performance.",
+                ),
+                KbDocument(
+                    title="Redis In-Memory Store",
+                    body="Redis is an in-memory data structure store used as a database, cache, and message broker. It supports strings, hashes, lists, sets, and sorted sets with atomic operations.",
+                ),
+                KbDocument(
+                    title="LangGraph Orchestration",
+                    body="LangGraph is a library for building stateful, multi-actor applications with LLMs. It provides graph-based orchestration with cycles, persistence, and human-in-the-loop capabilities for complex agent workflows.",
+                ),
+                KbDocument(
+                    title="Docker Containerization",
+                    body="Docker is a platform for developing, shipping, and running applications in containers. Containers package code and dependencies together, ensuring consistency across environments.",
+                ),
+                KbDocument(
+                    title="Kubernetes Orchestration",
+                    body="Kubernetes (K8s) is an open-source container orchestration platform that automates deployment, scaling, and management of containerized applications. It provides service discovery, load balancing, and self-healing.",
+                ),
+            ]
+
+            session.add_all(seed_docs)
+            await session.commit()
+            logger.info("Seeded KB documents", count=len(seed_docs))
 
     async def close(self) -> None:
         """Close database connection."""

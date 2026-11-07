@@ -16,7 +16,7 @@ from ..db.repositories import repository
 from ..schemas.answer import FinalAnswer
 from ..schemas.common import ErrorInfo, RiskLevel
 from ..schemas.intent import IntentClassification
-from ..schemas.plan import Plan, PlanStep
+from ..schemas.plan import Plan
 from ..schemas.run import ApprovalDecision, RunStatus
 from ..schemas.tools import (
     CalcOutput,
