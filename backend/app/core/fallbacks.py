@@ -125,13 +125,13 @@ class _VerifierFallback:
             score = 0.0
             verdict = Verdict.REVISE
         elif successful_results == total_results:
-            score = 100.0
+            score = 1.0
             verdict = Verdict.PASS
         elif successful_results >= total_results * 0.5:
-            score = 60.0
+            score = successful_results / total_results
             verdict = Verdict.PASS
         else:
-            score = 30.0
+            score = successful_results / total_results
             verdict = Verdict.BLOCK
 
         return VerificationReport(
