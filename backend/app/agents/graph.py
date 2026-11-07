@@ -1,5 +1,8 @@
 """SentryFlow LangGraph agent orchestration."""
 
+import ast
+import operator
+import time
 from typing import Any
 
 from langgraph.graph import END, StateGraph
@@ -9,10 +12,11 @@ from ..core.fallbacks import get_finalizer_fallback, get_planner_fallback, get_v
 from ..core.llm_gateway import llm_gateway
 from ..core.logging import get_logger
 from ..core.observability import observe
+from ..db.repositories import repository
 from ..schemas.answer import FinalAnswer
 from ..schemas.common import ErrorInfo, RiskLevel
 from ..schemas.intent import IntentClassification
-from ..schemas.plan import Plan
+from ..schemas.plan import Plan, PlanStep
 from ..schemas.run import ApprovalDecision, RunStatus
 from ..schemas.tools import (
     CalcOutput,
@@ -28,6 +32,87 @@ from ..schemas.verification import VerificationReport
 from .state import RunState, StateUpdate, as_update
 
 logger = get_logger(__name__)
+
+
+# Safe calculator using AST
+class SafeCalculator:
+    """Safe expression evaluator using AST (no eval)."""
+
+    _operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.Mod: operator.mod,
+        ast.USub: operator.neg,
+        ast.UAdd: operator.pos,
+    }
+
+    @classmethod
+    def evaluate(cls, expression: str) -> float:
+        """Safely evaluate a mathematical expression."""
+        try:
+            node = ast.parse(expression, mode="eval")
+            return cls._eval_node(node.body)
+        except Exception as e:
+            raise ValueError(f"Invalid expression: {e}") from e
+
+    @classmethod
+    def _eval_node(cls, node: ast.AST) -> float:
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float)):
+                return float(node.value)
+            raise ValueError("Only numeric constants allowed")
+        elif isinstance(node, ast.BinOp):
+            left = cls._eval_node(node.left)
+            right = cls._eval_node(node.right)
+            op_type = type(node.op)
+            if op_type in cls._operators:
+                return cls._operators[op_type](left, right)
+            raise ValueError(f"Unsupported operator: {op_type}")
+        elif isinstance(node, ast.UnaryOp):
+            operand = cls._eval_node(node.operand)
+            op_type = type(node.op)
+            if op_type in cls._operators:
+                return cls._operators[op_type](operand)
+            raise ValueError(f"Unsupported unary operator: {op_type}")
+        else:
+            raise ValueError(f"Unsupported expression type: {type(node)}")
+
+
+# Mock web search results
+MOCK_SEARCH_RESULTS: dict[str, list[dict[str, str]]] = {
+    "capital of france": [
+        {"title": "Paris - Wikipedia", "url": "https://en.wikipedia.org/wiki/Paris", "snippet": "Paris is the capital and most populous city of France."},
+        {"title": "France - Britannica", "url": "https://www.britannica.com/place/France", "snippet": "France is a country in Western Europe. Its capital is Paris."},
+        {"title": "Capital Cities of Europe", "url": "https://example.com/europe-capitals", "snippet": "List of European capitals including Paris, France."},
+    ],
+    "quantum computing": [
+        {"title": "Quantum Computing - IBM", "url": "https://www.ibm.com/quantum", "snippet": "Quantum computing uses quantum mechanics to solve complex problems."},
+        {"title": "Quantum Computing Explained", "url": "https://example.com/quantum", "snippet": "A beginner's guide to quantum computing concepts and applications."},
+        {"title": "Recent Advances in Quantum Computing", "url": "https://arxiv.org/quantum", "snippet": "Latest research papers on quantum algorithms and hardware."},
+    ],
+    "python": [
+        {"title": "Python.org", "url": "https://www.python.org", "snippet": "Official Python programming language website."},
+        {"title": "Python Tutorial - Real Python", "url": "https://realpython.com", "snippet": "Comprehensive Python tutorials and guides."},
+        {"title": "Python Documentation", "url": "https://docs.python.org", "snippet": "Official Python documentation and reference."},
+    ],
+    "default": [
+        {"title": "Search Result 1", "url": "https://example.com/1", "snippet": "Relevant information about the query topic."},
+        {"title": "Search Result 2", "url": "https://example.com/2", "snippet": "Additional details and context for the search."},
+        {"title": "Search Result 3", "url": "https://example.com/3", "snippet": "Further reading and related resources."},
+    ],
+}
+
+
+def _get_mock_search_hits(query: str) -> list[dict[str, str]]:
+    """Get mock search hits based on query keywords."""
+    query_lower = query.lower()
+    for key, hits in MOCK_SEARCH_RESULTS.items():
+        if key in query_lower:
+            return hits
+    return MOCK_SEARCH_RESULTS["default"]
 
 
 @observe(name="intake_guard")
@@ -61,7 +146,7 @@ async def planner(state: RunState) -> dict[str, object]:
             Plan,
             [
                 {"role": "system", "content": "Create a step-by-step plan for the task."},
-                {"role": "user", "content": f"Task: {state.task}\\nIntent: {state.intent.intent.value}"},
+                {"role": "user", "content": f"Task: {state.task}\nIntent: {state.intent.intent.value}"},
             ],
             purpose="plan_creation",
         )
@@ -111,64 +196,65 @@ async def worker(state: RunState) -> dict[str, object]:
 
 
 async def _execute_step(step: Any) -> ToolResult:
-    """Execute a single plan step."""
+    """Execute a single plan step with real mock implementations."""
+    start_time = time.perf_counter()
+
     tool_name = step.args.tool if hasattr(step.args, "tool") else ToolName.WEB_SEARCH
     args = step.args.model_dump() if hasattr(step.args, "model_dump") else {}
 
-    if tool_name == ToolName.WEB_SEARCH:
+    try:
+        if tool_name == ToolName.WEB_SEARCH:
+            query = args.get("query", "")
+            max_results = args.get("max_results", 3)
+            hits = _get_mock_search_hits(query)[:max_results]
+            output = SearchOutput(hits=[{"title": h["title"], "url": h["url"], "snippet": h["snippet"]} for h in hits])
+
+        elif tool_name == ToolName.HTTP_FETCH:
+            url = args.get("url", "")
+            output = FetchOutput(url=url, text=f"Mock content from {url}", truncated=False)
+
+        elif tool_name == ToolName.CALCULATOR:
+            expr = args.get("expression", "0")
+            value = SafeCalculator.evaluate(expr)
+            output = CalcOutput(value=value)
+
+        elif tool_name == ToolName.KB_LOOKUP:
+            query = args.get("query", "")
+            top_k = args.get("top_k", 3)
+            docs = await repository.search_kb(query, top_k)
+            passages = [
+                {"doc_id": str(doc.id), "text": doc.body[:500], "score": 0.9}
+                for doc in docs
+            ]
+            output = KbOutput(passages=passages)
+
+        elif tool_name == ToolName.EXECUTE_WEBHOOK:
+            output = WebhookOutput(status_code=200, summary="Webhook executed successfully (mock)")
+
+        else:
+            output = None
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+
         return ToolResult(
             step_id=step.step_id,
             tool=tool_name,
             status=ToolStatus.SUCCESS,
-            output=SearchOutput(hits=[]),
-            latency_ms=100,
+            output=output,
+            latency_ms=latency_ms,
             cache_hit=False,
         )
-    elif tool_name == ToolName.HTTP_FETCH:
+
+    except Exception as e:
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.error(f"Step {step.step_id} failed", error=str(e))
         return ToolResult(
             step_id=step.step_id,
             tool=tool_name,
-            status=ToolStatus.SUCCESS,
-            output=FetchOutput(url=args.get("url", ""), text="sample", truncated=False),
-            latency_ms=200,
-            cache_hit=False,
-        )
-    elif tool_name == ToolName.CALCULATOR:
-        expr = args.get("expression", "0")
-        result = eval(expr) if expr else 0
-        return ToolResult(
-            step_id=step.step_id,
-            tool=tool_name,
-            status=ToolStatus.SUCCESS,
-            output=CalcOutput(value=float(result)),
-            latency_ms=50,
-            cache_hit=False,
-        )
-    elif tool_name == ToolName.KB_LOOKUP:
-        return ToolResult(
-            step_id=step.step_id,
-            tool=tool_name,
-            status=ToolStatus.SUCCESS,
-            output=KbOutput(passages=[]),
-            latency_ms=150,
-            cache_hit=False,
-        )
-    elif tool_name == ToolName.EXECUTE_WEBHOOK:
-        return ToolResult(
-            step_id=step.step_id,
-            tool=tool_name,
-            status=ToolStatus.SUCCESS,
-            output=WebhookOutput(status_code=200, summary="success"),
-            latency_ms=300,
-            cache_hit=False,
-        )
-    else:
-        return ToolResult(
-            step_id=step.step_id,
-            tool=tool_name,
-            status=ToolStatus.SKIPPED,
+            status=ToolStatus.FAILED,
             output=None,
-            latency_ms=0,
+            error=ErrorInfo(code="EXECUTION_ERROR", message=str(e)),
+            latency_ms=latency_ms,
             cache_hit=False,
         )
 
@@ -181,7 +267,7 @@ async def verifier(state: RunState) -> dict[str, object]:
             VerificationReport,
             [
                 {"role": "system", "content": "Verify the execution results."},
-                {"role": "user", "content": f"Task: {state.task}\\nResults: {state.results}"},
+                {"role": "user", "content": f"Task: {state.task}\nResults: {state.results}"},
             ],
             purpose="verification",
         )
@@ -200,7 +286,7 @@ async def finalize(state: RunState) -> dict[str, object]:
             FinalAnswer,
             [
                 {"role": "system", "content": "Create a comprehensive final answer."},
-                {"role": "user", "content": f"Task: {state.task}\\nResults: {state.results}"},
+                {"role": "user", "content": f"Task: {state.task}\nResults: {state.results}"},
             ],
             purpose="final_answer",
         )
