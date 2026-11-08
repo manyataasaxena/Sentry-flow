@@ -3,6 +3,7 @@
 import ast
 import operator
 import time
+from collections.abc import Callable
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -21,8 +22,11 @@ from ..schemas.tools import (
     CalcOutput,
     FetchOutput,
     KbOutput,
+    Passage,
+    SearchHit,
     SearchOutput,
     ToolName,
+    ToolOutput,
     ToolResult,
     ToolStatus,
     WebhookOutput,
@@ -37,13 +41,16 @@ logger = get_logger(__name__)
 class SafeCalculator:
     """Safe expression evaluator using AST (no eval)."""
 
-    _operators = {
+    _bin_operators: dict[type[ast.operator], Callable[[float, float], float]] = {
         ast.Add: operator.add,
         ast.Sub: operator.sub,
         ast.Mult: operator.mul,
         ast.Div: operator.truediv,
         ast.Pow: operator.pow,
         ast.Mod: operator.mod,
+    }
+
+    _un_operators: dict[type[ast.unaryop], Callable[[float], float]] = {
         ast.USub: operator.neg,
         ast.UAdd: operator.pos,
     }
@@ -53,7 +60,7 @@ class SafeCalculator:
         """Safely evaluate a mathematical expression."""
         try:
             node = ast.parse(expression, mode="eval")
-            return cls._eval_node(node.body)
+            return float(cls._eval_node(node.body))
         except Exception as e:
             raise ValueError(f"Invalid expression: {e}") from e
 
@@ -67,14 +74,14 @@ class SafeCalculator:
             left = cls._eval_node(node.left)
             right = cls._eval_node(node.right)
             op_type = type(node.op)
-            if op_type in cls._operators:
-                return cls._operators[op_type](left, right)
+            if op_type in cls._bin_operators:
+                return cls._bin_operators[op_type](left, right)
             raise ValueError(f"Unsupported operator: {op_type}")
         elif isinstance(node, ast.UnaryOp):
             operand = cls._eval_node(node.operand)
             op_type = type(node.op)
-            if op_type in cls._operators:
-                return cls._operators[op_type](operand)
+            if op_type in cls._un_operators:
+                return cls._un_operators[op_type](operand)
             raise ValueError(f"Unsupported unary operator: {op_type}")
         else:
             raise ValueError(f"Unsupported expression type: {type(node)}")
@@ -201,12 +208,19 @@ async def _execute_step(step: PlanStep) -> ToolResult:
     tool_name = step.args.tool if hasattr(step.args, "tool") else ToolName.WEB_SEARCH
     args = step.args.model_dump() if hasattr(step.args, "model_dump") else {}
 
+    output: ToolOutput | None = None
+
     try:
         if tool_name == ToolName.WEB_SEARCH:
             query = args.get("query", "")
             max_results = args.get("max_results", 3)
             hits = _get_mock_search_hits(query)[:max_results]
-            output = SearchOutput(hits=[{"title": h["title"], "url": h["url"], "snippet": h["snippet"]} for h in hits])
+            output = SearchOutput(
+                hits=[
+                    SearchHit(title=h["title"], url=h["url"], snippet=h["snippet"])
+                    for h in hits
+                ]
+            )
 
         elif tool_name == ToolName.HTTP_FETCH:
             url = args.get("url", "")
@@ -222,7 +236,7 @@ async def _execute_step(step: PlanStep) -> ToolResult:
             top_k = args.get("top_k", 3)
             docs = await repository.search_kb(query, top_k)
             passages = [
-                {"doc_id": str(doc.id), "text": doc.body[:500], "score": 0.9}
+                Passage(doc_id=str(doc.id), text=doc.body[:500], score=0.9)
                 for doc in docs
             ]
             output = KbOutput(passages=passages)

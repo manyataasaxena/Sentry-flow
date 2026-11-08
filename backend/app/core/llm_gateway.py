@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -10,8 +10,18 @@ from ..schemas.answer import Citation, FinalAnswer
 from ..schemas.common import RiskLevel
 from ..schemas.intent import IntentClassification, IntentType
 from ..schemas.plan import Plan, PlanStep
-from ..schemas.tools import CalculatorArgs, KbLookupArgs, ToolResult, WebSearchArgs
-from ..schemas.verification import VerificationReport
+from ..schemas.tools import (
+    CalculatorArgs,
+    CalcOutput,
+    FetchOutput,
+    KbLookupArgs,
+    KbOutput,
+    SearchOutput,
+    ToolResult,
+    WebSearchArgs,
+    WebhookOutput,
+)
+from ..schemas.verification import VerificationReport, Verdict
 
 logger = get_logger(__name__)
 
@@ -37,7 +47,7 @@ class FakeLLM(LLMPort):
     ) -> T:
         """Return a deterministic response based on purpose."""
         if purpose in self._responses:
-            return cast(T, model(**self._responses[purpose]))
+            return model(**self._responses[purpose])
 
         # Keyword-based deterministic responses
         content = messages[-1]["content"] if messages else ""
@@ -63,8 +73,17 @@ class FakeLLM(LLMPort):
 
         # Unsafe/Safety checks first
         unsafe_keywords = [
-            "bomb", "explosive", "weapon", "kill", "murder", "harm",
-            "hack", "exploit", "breach", "inject", "override"
+            "bomb",
+            "explosive",
+            "weapon",
+            "kill",
+            "murder",
+            "harm",
+            "hack",
+            "exploit",
+            "breach",
+            "inject",
+            "override",
         ]
         if any(word in task_lower for word in unsafe_keywords):
             return IntentClassification(
@@ -203,49 +222,53 @@ class FakeLLM(LLMPort):
                 step_id = r.step_id
 
                 if tool_name == "web_search" and r.output:
-                    hits = r.output.hits
-                    if hits:
-                        for i, hit in enumerate(hits[:3]):
-                            answer_parts.append(f"- {hit.title or 'Result'}: {hit.snippet or 'No snippet available'}")
-                            citations.append(
-                                Citation(
-                                    step_id=step_id,
-                                    source=hit.url or f"search_result_{i}",
-                                    quote=(hit.snippet or "")[:200],
+                    if isinstance(r.output, SearchOutput):
+                        hits = r.output.hits
+                        if hits:
+                            for i, hit in enumerate(hits[:3]):
+                                answer_parts.append(f"- {hit.title or 'Result'}: {hit.snippet or 'No snippet available'}")
+                                citations.append(
+                                    Citation(
+                                        step_id=step_id,
+                                        source=hit.url or f"search_result_{i}",
+                                        quote=(hit.snippet or "")[:200],
+                                    )
                                 )
-                            )
 
                 elif tool_name == "calculator" and r.output:
-                    answer_parts.append(f"- Calculator result: {r.output.value}")
-                    citations.append(
-                        Citation(
-                            step_id=step_id,
-                            source="calculator",
-                            quote=str(r.output.value),
-                        )
-                    )
-
-                elif tool_name == "kb_lookup" and r.output:
-                    passages = r.output.passages
-                    for passage in passages[:3]:
-                        answer_parts.append(f"- From KB: {passage.text[:200]}")
+                    if isinstance(r.output, CalcOutput):
+                        answer_parts.append(f"- Calculator result: {r.output.value}")
                         citations.append(
                             Citation(
                                 step_id=step_id,
-                                source=passage.doc_id,
-                                quote=passage.text[:200],
+                                source="calculator",
+                                quote=str(r.output.value),
                             )
                         )
 
+                elif tool_name == "kb_lookup" and r.output:
+                    if isinstance(r.output, KbOutput):
+                        passages = r.output.passages
+                        for passage in passages[:3]:
+                            answer_parts.append(f"- From KB: {passage.text[:200]}")
+                            citations.append(
+                                Citation(
+                                    step_id=step_id,
+                                    source=passage.doc_id,
+                                    quote=passage.text[:200],
+                                )
+                            )
+
                 elif tool_name == "http_fetch" and r.output:
-                    answer_parts.append(f"- Fetched: {r.output.text[:200]}")
-                    citations.append(
-                        Citation(
-                            step_id=step_id,
-                            source=r.output.url,
-                            quote=r.output.text[:200],
+                    if isinstance(r.output, FetchOutput):
+                        answer_parts.append(f"- Fetched: {r.output.text[:200]}")
+                        citations.append(
+                            Citation(
+                                step_id=step_id,
+                                source=r.output.url,
+                                quote=r.output.text[:200],
+                            )
                         )
-                    )
 
                 else:
                     answer_parts.append(f"- Step {step_id}: Completed")
@@ -290,16 +313,16 @@ class FakeLLM(LLMPort):
 
         if total == 0:
             score = 0.0
-            verdict = "revise"
+            verdict = Verdict.REVISE
         elif successful == total:
             score = 1.0
-            verdict = "pass"
+            verdict = Verdict.PASS
         elif successful >= total * 0.5:
             score = successful / total
-            verdict = "pass"
+            verdict = Verdict.PASS
         else:
             score = successful / total
-            verdict = "block"
+            verdict = Verdict.BLOCK
 
         feedback_parts = [
             f"Verification: {successful}/{total} steps succeeded"
@@ -317,7 +340,7 @@ class FakeLLM(LLMPort):
             suggested_improvements=(
                 ["Consider rephrasing the task or using different tools"]
                 if successful < total
-                else None
+                else []
             ),
             confidence=round(min(0.9, 0.5 + 0.1 * successful / max(1, total)), 2),
         )
