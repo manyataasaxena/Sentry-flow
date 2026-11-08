@@ -3,7 +3,6 @@
 import ast
 import operator
 import time
-from typing import Any
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -16,7 +15,7 @@ from ..db.repositories import repository
 from ..schemas.answer import FinalAnswer
 from ..schemas.common import ErrorInfo, RiskLevel
 from ..schemas.intent import IntentClassification
-from ..schemas.plan import Plan
+from ..schemas.plan import Plan, PlanStep
 from ..schemas.run import ApprovalDecision, RunStatus
 from ..schemas.tools import (
     CalcOutput,
@@ -195,7 +194,7 @@ async def worker(state: RunState) -> dict[str, object]:
     return as_update(StateUpdate(results=results))
 
 
-async def _execute_step(step: Any) -> ToolResult:
+async def _execute_step(step: PlanStep) -> ToolResult:
     """Execute a single plan step with real mock implementations."""
     start_time = time.perf_counter()
 

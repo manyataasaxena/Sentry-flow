@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -6,9 +6,11 @@ from ..core.config import settings
 from ..core.errors import PermanentError
 from ..core.logging import get_logger
 from ..core.ports import LLMPort
-from ..schemas.answer import FinalAnswer
-from ..schemas.intent import IntentClassification
+from ..schemas.answer import Citation, FinalAnswer
+from ..schemas.common import RiskLevel
+from ..schemas.intent import IntentClassification, IntentType
 from ..schemas.plan import Plan, PlanStep
+from ..schemas.tools import CalculatorArgs, KbLookupArgs, ToolResult, WebSearchArgs
 from ..schemas.verification import VerificationReport
 
 logger = get_logger(__name__)
@@ -35,22 +37,22 @@ class FakeLLM(LLMPort):
     ) -> T:
         """Return a deterministic response based on purpose."""
         if purpose in self._responses:
-            return model(**self._responses[purpose])
+            return cast(T, model(**self._responses[purpose]))
 
         # Keyword-based deterministic responses
         content = messages[-1]["content"] if messages else ""
 
         if model.__name__ == "IntentClassification":
-            return self._classify_intent(content)
+            return cast(T, self._classify_intent(content))
 
         elif model.__name__ == "Plan":
-            return self._create_plan(content)
+            return cast(T, self._create_plan(content))
 
         elif model.__name__ == "FinalAnswer":
-            return self._create_final_answer(content)
+            return cast(T, self._create_final_answer(content, []))
 
         elif model.__name__ == "VerificationReport":
-            return self._create_verification_report(content)
+            return cast(T, self._create_verification_report(content, []))
 
         else:
             return model()
@@ -66,7 +68,7 @@ class FakeLLM(LLMPort):
         ]
         if any(word in task_lower for word in unsafe_keywords):
             return IntentClassification(
-                intent="unsafe",
+                intent=IntentType.UNSAFE,
                 confidence=0.95,
                 rationale="Task contains unsafe content patterns",
             )
@@ -74,7 +76,7 @@ class FakeLLM(LLMPort):
         # Research
         if any(word in task_lower for word in ["search", "find", "lookup", "research", "google", "web"]):
             return IntentClassification(
-                intent="research",
+                intent=IntentType.RESEARCH,
                 confidence=0.9,
                 rationale="Task involves searching for information",
             )
@@ -82,7 +84,7 @@ class FakeLLM(LLMPort):
         # Data analysis / math
         if any(word in task_lower for word in ["calculate", "compute", "math", "sum", "average", "percent", "total"]):
             return IntentClassification(
-                intent="data_analysis",
+                intent=IntentType.DATA_ANALYSIS,
                 confidence=0.9,
                 rationale="Task involves calculation or data analysis",
             )
@@ -90,7 +92,7 @@ class FakeLLM(LLMPort):
         # Knowledge QA
         if any(word in task_lower for word in ["what is", "who is", "explain", "define", "how to", "capital"]):
             return IntentClassification(
-                intent="knowledge_qa",
+                intent=IntentType.KNOWLEDGE_QA,
                 confidence=0.9,
                 rationale="Task asks for knowledge or explanation",
             )
@@ -98,14 +100,14 @@ class FakeLLM(LLMPort):
         # Action execution / webhook
         if any(word in task_lower for word in ["run", "execute", "send", "webhook", "call", "trigger"]):
             return IntentClassification(
-                intent="action_execution",
+                intent=IntentType.ACTION_EXECUTION,
                 confidence=0.85,
                 rationale="Task involves executing actions or webhooks",
             )
 
         # Default
         return IntentClassification(
-            intent="research",
+            intent=IntentType.RESEARCH,
             confidence=0.5,
             rationale="Default research intent (fallback)",
         )
@@ -115,87 +117,83 @@ class FakeLLM(LLMPort):
         task_lower = task.lower()
 
         if any(word in task_lower for word in ["search", "find", "lookup", "research"]):
-            steps = [
-                {
-                    "step_id": "s1",
-                    "goal": "Search for relevant information",
-                    "args": {"tool": "web_search", "query": task, "max_results": 3},
-                }
-            ]
+            step = PlanStep(
+                step_id="s1",
+                goal="Search for relevant information",
+                args=WebSearchArgs(query=task, max_results=3),
+                depends_on=[],
+            )
             return Plan(
                 intent=IntentClassification(
-                    intent="research",
+                    intent=IntentType.RESEARCH,
                     confidence=0.9,
                     rationale="Research plan generated by fallback",
                 ),
-                steps=[PlanStep(**s) for s in steps],
+                steps=[step],
                 strategy_summary="Research strategy using web search",
-                risk="low",
+                risk=RiskLevel.LOW,
             )
 
         elif any(word in task_lower for word in ["calculate", "compute", "math", "percent", "sum"]):
-            steps = [
-                {
-                    "step_id": "s1",
-                    "goal": "Calculate the result",
-                    "args": {"tool": "calculator", "expression": task},
-                }
-            ]
+            step = PlanStep(
+                step_id="s1",
+                goal="Calculate the result",
+                args=CalculatorArgs(expression=task),
+                depends_on=[],
+            )
             return Plan(
                 intent=IntentClassification(
-                    intent="data_analysis",
+                    intent=IntentType.DATA_ANALYSIS,
                     confidence=0.9,
                     rationale="Calculation plan generated by fallback",
                 ),
-                steps=[PlanStep(**s) for s in steps],
+                steps=[step],
                 strategy_summary="Data analysis strategy using calculator",
-                risk="low",
+                risk=RiskLevel.LOW,
             )
 
         elif any(word in task_lower for word in ["what is", "who is", "explain", "define", "capital"]):
-            steps = [
-                {
-                    "step_id": "s1",
-                    "goal": "Look up information",
-                    "args": {"tool": "kb_lookup", "query": task, "top_k": 3},
-                }
-            ]
+            step = PlanStep(
+                step_id="s1",
+                goal="Look up information",
+                args=KbLookupArgs(query=task, top_k=3),
+                depends_on=[],
+            )
             return Plan(
                 intent=IntentClassification(
-                    intent="knowledge_qa",
+                    intent=IntentType.KNOWLEDGE_QA,
                     confidence=0.9,
                     rationale="Knowledge QA plan generated by fallback",
                 ),
-                steps=[PlanStep(**s) for s in steps],
+                steps=[step],
                 strategy_summary="Knowledge base lookup strategy",
-                risk="low",
+                risk=RiskLevel.LOW,
             )
 
         else:
-            steps = [
-                {
-                    "step_id": "s1",
-                    "goal": "Search for relevant information",
-                    "args": {"tool": "web_search", "query": task, "max_results": 3},
-                }
-            ]
+            step = PlanStep(
+                step_id="s1",
+                goal="Search for relevant information",
+                args=WebSearchArgs(query=task, max_results=3),
+                depends_on=[],
+            )
             return Plan(
                 intent=IntentClassification(
-                    intent="research",
+                    intent=IntentType.RESEARCH,
                     confidence=0.7,
                     rationale="Default research plan (fallback)",
                 ),
-                steps=[PlanStep(**s) for s in steps],
+                steps=[step],
                 strategy_summary="Research strategy using web search",
-                risk="low",
+                risk=RiskLevel.LOW,
             )
 
-    def _create_final_answer(self, task: str, results: list) -> FinalAnswer:
+    def _create_final_answer(self, task: str, results: list[ToolResult]) -> FinalAnswer:
         """Build a final answer from actual tool results with citations."""
         successful = [r for r in results if r.status.value == "success" and r.output is not None]
 
-        answer_parts = []
-        citations = []
+        answer_parts: list[str] = []
+        citations: list[Citation] = []
 
         if successful:
             answer_parts.append(f"Based on your task '{task}', here are the results:")
@@ -210,17 +208,21 @@ class FakeLLM(LLMPort):
                         for i, hit in enumerate(hits[:3]):
                             answer_parts.append(f"- {hit.title or 'Result'}: {hit.snippet or 'No snippet available'}")
                             citations.append(
-                                {
-                                    "step_id": step_id,
-                                    "source": hit.url or f"search_result_{i}",
-                                    "quote": (hit.snippet or "")[:200],
-                                }
+                                Citation(
+                                    step_id=step_id,
+                                    source=hit.url or f"search_result_{i}",
+                                    quote=(hit.snippet or "")[:200],
+                                )
                             )
 
                 elif tool_name == "calculator" and r.output:
                     answer_parts.append(f"- Calculator result: {r.output.value}")
                     citations.append(
-                        {"step_id": step_id, "source": "calculator", "quote": str(r.output.value)}
+                        Citation(
+                            step_id=step_id,
+                            source="calculator",
+                            quote=str(r.output.value),
+                        )
                     )
 
                 elif tool_name == "kb_lookup" and r.output:
@@ -228,18 +230,32 @@ class FakeLLM(LLMPort):
                     for passage in passages[:3]:
                         answer_parts.append(f"- From KB: {passage.text[:200]}")
                         citations.append(
-                            {"step_id": step_id, "source": passage.doc_id, "quote": passage.text[:200]}
+                            Citation(
+                                step_id=step_id,
+                                source=passage.doc_id,
+                                quote=passage.text[:200],
+                            )
                         )
 
                 elif tool_name == "http_fetch" and r.output:
                     answer_parts.append(f"- Fetched: {r.output.text[:200]}")
                     citations.append(
-                        {"step_id": step_id, "source": r.output.url, "quote": r.output.text[:200]}
+                        Citation(
+                            step_id=step_id,
+                            source=r.output.url,
+                            quote=r.output.text[:200],
+                        )
                     )
 
                 else:
                     answer_parts.append(f"- Step {step_id}: Completed")
-                    citations.append({"step_id": step_id, "source": tool_name, "quote": "Completed"})
+                    citations.append(
+                        Citation(
+                            step_id=step_id,
+                            source=tool_name,
+                            quote="Completed",
+                        )
+                    )
 
         else:
             answer_parts.append(f"Based on your task '{task}', I was able to execute some steps, but no tool results were returned with usable data.")
@@ -247,7 +263,11 @@ class FakeLLM(LLMPort):
             for r in results[:3]:
                 answer_parts.append(f"- Step {r.step_id}: Executed")
                 citations.append(
-                    {"step_id": r.step_id, "source": r.tool.value, "quote": "Executed"}
+                    Citation(
+                        step_id=r.step_id,
+                        source=r.tool.value,
+                        quote="Executed",
+                    )
                 )
 
         # Build confidence based on success rate
@@ -262,7 +282,7 @@ class FakeLLM(LLMPort):
             degraded=len(successful) == 0,
         )
 
-    def _create_verification_report(self, task: str, results: list) -> VerificationReport:
+    def _create_verification_report(self, task: str, results: list[ToolResult]) -> VerificationReport:
         """Create a verification report based on actual tool results."""
         successful = sum(1 for r in results if r.status.value == "success")
 
