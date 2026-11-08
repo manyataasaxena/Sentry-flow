@@ -82,7 +82,7 @@ class SafeCalculator:
             un_op = type(node.op)
             if un_op in cls._un_operators:
                 return cls._un_operators[un_op](operand)
-            raise ValueError(f"Unsupported unary operator: {op_type}")
+            raise ValueError(f"Unsupported unary operator: {un_op}")
         else:
             raise ValueError(f"Unsupported expression type: {type(node)}")
 
