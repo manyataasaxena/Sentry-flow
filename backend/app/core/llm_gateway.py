@@ -11,17 +11,16 @@ from ..schemas.common import RiskLevel
 from ..schemas.intent import IntentClassification, IntentType
 from ..schemas.plan import Plan, PlanStep
 from ..schemas.tools import (
-    CalculatorArgs,
     CalcOutput,
+    CalculatorArgs,
     FetchOutput,
     KbLookupArgs,
     KbOutput,
     SearchOutput,
     ToolResult,
     WebSearchArgs,
-    WebhookOutput,
 )
-from ..schemas.verification import VerificationReport, Verdict
+from ..schemas.verification import Verdict, VerificationReport
 
 logger = get_logger(__name__)
 
