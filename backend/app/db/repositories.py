@@ -1,3 +1,4 @@
+import re
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from ..core.logging import get_logger
 from .models import AuditLog, Base, EvalResult, EvalRun, KbDocument, Run, RunEvent, User
 
 logger = get_logger(__name__)
+KB_STOPWORDS = {"what", "is", "the", "of", "a", "an", "how", "to", "in"}
 
 
 class DatabaseRepository:
@@ -169,14 +171,30 @@ class DatabaseRepository:
             return result.scalar_one_or_none()
 
     # KB operations
-    async def search_kb(self, query: str, top_k: int = 10) -> list[KbDocument]:
-        """Search KB documents."""
+    async def search_kb(self, query: str, top_k: int = 10) -> list[tuple[KbDocument, float]]:
+        """Search KB documents by matching and ranking query keywords."""
+        keywords = [
+            word
+            for word in re.findall(r"[a-z0-9]+", query.lower())
+            if word not in KB_STOPWORDS
+        ]
+        if not keywords:
+            return []
+
         async with self._session_factory() as session:
-            # Simple text search for now - would use full-text search in production
-            result = await session.execute(
-                select(KbDocument).where(KbDocument.body.ilike(f"%{query}%")).limit(top_k)
-            )
-            return cast(list[KbDocument], result.scalars().all())
+            result = await session.execute(select(KbDocument))
+            ranked: list[tuple[KbDocument, int]] = []
+            for document in result.scalars().all():
+                searchable = f"{document.title} {document.body}".lower()
+                matches = sum(1 for keyword in keywords if keyword in searchable)
+                if matches:
+                    ranked.append((document, matches))
+
+            ranked.sort(key=lambda item: item[1], reverse=True)
+            return [
+                (document, matches / len(keywords))
+                for document, matches in ranked[:top_k]
+            ]
 
     # Eval operations
     async def create_eval_run(self, eval_run_data: dict[str, Any]) -> EvalRun:

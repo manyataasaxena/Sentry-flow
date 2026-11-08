@@ -1,3 +1,4 @@
+import re
 from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
@@ -27,6 +28,17 @@ logger = get_logger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
+def extract_task_text(prompt: str) -> str:
+    """Extract the task value from a structured prompt."""
+    match = re.search(r"Task:\s*(.*?)(?=\n(?:Intent|Results):|$)", prompt, re.DOTALL)
+    return match.group(1).strip() if match else prompt.strip()
+
+
+def _extract_calculator_expression(task: str) -> str:
+    match = re.search(r"[0-9][0-9+*/().% -]*", task)
+    return match.group(0).strip() if match else "0"
+
+
 class FakeLLM(LLMPort):
     """Deterministic fake LLM for testing and demo mode."""
 
@@ -43,13 +55,14 @@ class FakeLLM(LLMPort):
         messages: list[dict[str, Any]],
         *,
         purpose: str,
+        results: list[ToolResult] | None = None,
     ) -> T:
         """Return a deterministic response based on purpose."""
         if purpose in self._responses:
             return model(**self._responses[purpose])
 
         # Keyword-based deterministic responses
-        content = messages[-1]["content"] if messages else ""
+        content = extract_task_text(messages[-1]["content"]) if messages else ""
 
         if model.__name__ == "IntentClassification":
             return cast(T, self._classify_intent(content))
@@ -58,10 +71,10 @@ class FakeLLM(LLMPort):
             return cast(T, self._create_plan(content))
 
         elif model.__name__ == "FinalAnswer":
-            return cast(T, self._create_final_answer(content, []))
+            return cast(T, self._create_final_answer(content, results))
 
         elif model.__name__ == "VerificationReport":
-            return cast(T, self._create_verification_report(content, []))
+            return cast(T, self._create_verification_report(content, results))
 
         else:
             return model()
@@ -156,7 +169,7 @@ class FakeLLM(LLMPort):
             step = PlanStep(
                 step_id="s1",
                 goal="Calculate the result",
-                args=CalculatorArgs(expression=task),
+                args=CalculatorArgs(expression=_extract_calculator_expression(task)),
                 depends_on=[],
             )
             return Plan(
@@ -206,9 +219,12 @@ class FakeLLM(LLMPort):
                 risk=RiskLevel.LOW,
             )
 
-    def _create_final_answer(self, task: str, results: list[ToolResult]) -> FinalAnswer:
+    def _create_final_answer(
+        self, task: str, results: list[ToolResult] | None = None
+    ) -> FinalAnswer:
         """Build a final answer from actual tool results with citations."""
-        successful = [r for r in results if r.status.value == "success" and r.output is not None]
+        tool_results = results if results is not None else ()
+        successful = [r for r in tool_results if r.status.value == "success" and r.output is not None]
 
         answer_parts: list[str] = []
         citations: list[Citation] = []
@@ -282,7 +298,7 @@ class FakeLLM(LLMPort):
         else:
             answer_parts.append(f"Based on your task '{task}', I was able to execute some steps, but no tool results were returned with usable data.")
             # Still cite the steps that ran
-            for r in results[:3]:
+            for r in tool_results[:3]:
                 answer_parts.append(f"- Step {r.step_id}: Executed")
                 citations.append(
                     Citation(
@@ -293,7 +309,7 @@ class FakeLLM(LLMPort):
                 )
 
         # Build confidence based on success rate
-        confidence = min(0.9, 0.5 + 0.1 * len(successful)) if results else 0.3
+        confidence = min(0.9, 0.5 + 0.1 * len(successful)) if tool_results else 0.3
 
         answer_text = " ".join(answer_parts)
 
@@ -304,11 +320,14 @@ class FakeLLM(LLMPort):
             degraded=len(successful) == 0,
         )
 
-    def _create_verification_report(self, task: str, results: list[ToolResult]) -> VerificationReport:
+    def _create_verification_report(
+        self, task: str, results: list[ToolResult] | None = None
+    ) -> VerificationReport:
         """Create a verification report based on actual tool results."""
-        successful = sum(1 for r in results if r.status.value == "success")
+        tool_results = results if results is not None else ()
+        successful = sum(1 for r in tool_results if r.status.value == "success")
 
-        total = len(results)
+        total = len(tool_results)
 
         if total == 0:
             score = 0.0
@@ -381,14 +400,15 @@ class LLMGateway:
         messages: list[dict[str, Any]],
         *,
         purpose: str,
+        results: list[ToolResult] | None = None,
     ) -> T:
         """Call LLM with fallback chain."""
         try:
-            return await self.primary.structured(model, messages, purpose=purpose)
+            return await self.primary.structured(model, messages, purpose=purpose, results=results)
         except Exception as e:
             logger.warning(f"Primary LLM failed, trying fallback: {e}")
             try:
-                return await self.fallback.structured(model, messages, purpose=purpose)
+                return await self.fallback.structured(model, messages, purpose=purpose, results=results)
             except Exception as fallback_error:
                 logger.error(f"Fallback LLM also failed: {fallback_error}")
                 error_info: dict[str, Any] = {"code": "LLM_FAILURE"}

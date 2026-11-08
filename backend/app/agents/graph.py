@@ -4,6 +4,7 @@ import ast
 import operator
 import time
 from collections.abc import Callable
+from typing import Literal
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -15,7 +16,7 @@ from ..core.observability import observe
 from ..db.repositories import repository
 from ..schemas.answer import FinalAnswer
 from ..schemas.common import ErrorInfo, RiskLevel
-from ..schemas.intent import IntentClassification
+from ..schemas.intent import IntentClassification, IntentType
 from ..schemas.plan import Plan, PlanStep
 from ..schemas.run import ApprovalDecision, RunStatus
 from ..schemas.tools import (
@@ -31,7 +32,7 @@ from ..schemas.tools import (
     ToolStatus,
     WebhookOutput,
 )
-from ..schemas.verification import VerificationReport
+from ..schemas.verification import Verdict, VerificationReport
 from .state import RunState, StateUpdate, as_update
 
 logger = get_logger(__name__)
@@ -140,6 +141,29 @@ async def intake_guard(state: RunState) -> dict[str, object]:
         return as_update(StateUpdate(intent=fallback.classify_intent(state.task)))
 
 
+def _route_after_intake(state: RunState) -> Literal["safe_refusal", "planner"]:
+    if state.intent and state.intent.intent == IntentType.UNSAFE:
+        return "safe_refusal"
+    return "planner"
+
+
+@observe(name="safe_refusal")
+async def safe_refusal(state: RunState) -> dict[str, object]:
+    """Block unsafe requests without invoking planning or tools."""
+    return as_update(
+        StateUpdate(
+            status=RunStatus.BLOCKED,
+            draft=None,
+            report=VerificationReport(
+                verdict=Verdict.BLOCK,
+                score=0.0,
+                feedback="The task was blocked by the safety guard.",
+                safe_message="I can't help with that request.",
+            ),
+        )
+    )
+
+
 @observe(name="planner")
 async def planner(state: RunState) -> dict[str, object]:
     """Create an execution plan based on the classified intent."""
@@ -236,8 +260,8 @@ async def _execute_step(step: PlanStep) -> ToolResult:
             top_k = args.get("top_k", 3)
             docs = await repository.search_kb(query, top_k)
             passages = [
-                Passage(doc_id=str(doc.id), text=str(doc.body)[:500], score=0.9)
-                for doc in docs
+                Passage(doc_id=str(doc.id), text=str(doc.body)[:500], score=score)
+                for doc, score in docs
             ]
             output = KbOutput(passages=passages)
 
@@ -283,6 +307,7 @@ async def verifier(state: RunState) -> dict[str, object]:
                 {"role": "user", "content": f"Task: {state.task}\nResults: {state.results}"},
             ],
             purpose="verification",
+            results=state.results,
         )
         return as_update(StateUpdate(report=response))
     except Exception as e:
@@ -302,6 +327,7 @@ async def finalize(state: RunState) -> dict[str, object]:
                 {"role": "user", "content": f"Task: {state.task}\nResults: {state.results}"},
             ],
             purpose="final_answer",
+            results=state.results,
         )
         return as_update(StateUpdate(draft=response, status=RunStatus.COMPLETED))
     except Exception as e:
@@ -315,6 +341,7 @@ def create_agent_graph() -> CompiledStateGraph[RunState, None, RunState, RunStat
     workflow = StateGraph(RunState)
 
     workflow.add_node("intake_guard", intake_guard)
+    workflow.add_node("safe_refusal", safe_refusal)
     workflow.add_node("planner", planner)
     workflow.add_node("approval_gate", approval_gate)
     workflow.add_node("worker", worker)
@@ -323,7 +350,12 @@ def create_agent_graph() -> CompiledStateGraph[RunState, None, RunState, RunStat
 
     workflow.set_entry_point("intake_guard")
 
-    workflow.add_edge("intake_guard", "planner")
+    workflow.add_conditional_edges(
+        "intake_guard",
+        _route_after_intake,
+        {"safe_refusal": "safe_refusal", "planner": "planner"},
+    )
+    workflow.add_edge("safe_refusal", END)
     workflow.add_edge("planner", "approval_gate")
     workflow.add_edge("approval_gate", "worker")
     workflow.add_edge("worker", "verifier")

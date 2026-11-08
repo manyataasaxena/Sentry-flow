@@ -3,6 +3,8 @@ from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
+from ..schemas.tools import ToolResult
+
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -10,12 +12,13 @@ class LLMPort(Protocol):
     """Protocol for LLM providers."""
 
     async def structured(
-            self,
-            model: type[T],
-            messages: list[dict[str, Any]],
-            *,
-            purpose: str,
-        ) -> T: ...
+        self,
+        model: type[T],
+        messages: list[dict[str, Any]],
+        *,
+        purpose: str,
+        results: list[ToolResult] | None = None,
+    ) -> T: ...
 
 
 class CachePort(Protocol):
