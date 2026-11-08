@@ -73,15 +73,15 @@ class SafeCalculator:
         elif isinstance(node, ast.BinOp):
             left = cls._eval_node(node.left)
             right = cls._eval_node(node.right)
-            op_type = type(node.op)
-            if op_type in cls._bin_operators:
-                return cls._bin_operators[op_type](left, right)
-            raise ValueError(f"Unsupported operator: {op_type}")
+            bin_op = type(node.op)
+            if bin_op in cls._bin_operators:
+                return cls._bin_operators[bin_op](left, right)
+            raise ValueError(f"Unsupported operator: {bin_op}")
         elif isinstance(node, ast.UnaryOp):
             operand = cls._eval_node(node.operand)
-            op_type = type(node.op)
-            if op_type in cls._un_operators:
-                return cls._un_operators[op_type](operand)
+            un_op = type(node.op)
+            if un_op in cls._un_operators:
+                return cls._un_operators[un_op](operand)
             raise ValueError(f"Unsupported unary operator: {op_type}")
         else:
             raise ValueError(f"Unsupported expression type: {type(node)}")
@@ -205,7 +205,7 @@ async def _execute_step(step: PlanStep) -> ToolResult:
     """Execute a single plan step with real mock implementations."""
     start_time = time.perf_counter()
 
-    tool_name = step.args.tool if hasattr(step.args, "tool") else ToolName.WEB_SEARCH
+    tool_name = ToolName(step.args.tool)
     args = step.args.model_dump() if hasattr(step.args, "model_dump") else {}
 
     output: ToolOutput | None = None
@@ -236,7 +236,7 @@ async def _execute_step(step: PlanStep) -> ToolResult:
             top_k = args.get("top_k", 3)
             docs = await repository.search_kb(query, top_k)
             passages = [
-                Passage(doc_id=str(doc.id), text=doc.body[:500], score=0.9)
+                Passage(doc_id=str(doc.id), text=str(doc.body)[:500], score=0.9)
                 for doc in docs
             ]
             output = KbOutput(passages=passages)
