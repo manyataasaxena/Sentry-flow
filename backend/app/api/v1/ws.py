@@ -1,40 +1,57 @@
 import asyncio
+import time
+from datetime import datetime
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from ...core.logging import get_logger
+from ...schemas.run import RunStatus
+from .runs import _convert_seq, _events, _runs
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/ws", tags=["websocket"])
 
-# Active WebSocket connections
-_connections: dict[str, list[WebSocket]] = {}
 
-
-@router.websocket("/ws/runs/{run_id}")
+@router.websocket("/runs/{run_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
     run_id: str,
     last_seq: int | None = Query(None),
 ) -> None:
-    """WebSocket endpoint for real-time run events."""
+    """Replay and stream run events over WebSocket."""
     await websocket.accept()
-
-    if run_id not in _connections:
-        _connections[run_id] = []
-    _connections[run_id].append(websocket)
-
-    logger.info("WebSocket connected", run_id=run_id, last_seq=last_seq)
+    sequence = last_seq or 0
+    last_heartbeat = time.monotonic()
+    logger.info("WebSocket connected", run_id=run_id, last_seq=sequence)
 
     try:
-        # Send heartbeat every 15 seconds
         while True:
-            await websocket.send_json({"type": "heartbeat", "ts": "2024-01-01T00:00:00Z"})
-            await asyncio.sleep(15)
+            events = _events.get(run_id, [])
+            new_events = [event for event in events if _convert_seq(event.get("seq", 0)) > sequence]
+            for event in new_events:
+                await websocket.send_json(event)
+                sequence = _convert_seq(event.get("seq", sequence))
+
+            run_data = _runs.get(run_id)
+            status = run_data.get("status") if run_data else None
+            if status in (RunStatus.COMPLETED, RunStatus.BLOCKED, RunStatus.FAILED, RunStatus.CANCELLED):
+                if not any(_convert_seq(event.get("seq", 0)) > sequence for event in _events.get(run_id, [])):
+                    break
+
+            now = time.monotonic()
+            if now - last_heartbeat >= 15:
+                await websocket.send_json(
+                    {
+                        "type": "heartbeat",
+                        "run_id": run_id,
+                        "seq": sequence,
+                        "ts": datetime.now().isoformat(),
+                    }
+                )
+                last_heartbeat = now
+            await asyncio.sleep(0.2)
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected", run_id=run_id)
     finally:
-        _connections[run_id].remove(websocket)
-        if not _connections[run_id]:
-            del _connections[run_id]
+        logger.info("WebSocket stream ended", run_id=run_id, last_seq=sequence)

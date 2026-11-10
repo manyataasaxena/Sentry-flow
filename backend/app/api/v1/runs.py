@@ -131,8 +131,32 @@ def _convert_seq(val: object) -> int:
     return 0
 
 
+def _append_run_event(
+    run_id: str,
+    event_type: str,
+    node: str | None = None,
+    status: RunStatus | None = None,
+    error: str | None = None,
+) -> None:
+    events = _events.setdefault(run_id, [])
+    event: dict[str, object] = {
+        "seq": len(events) + 1,
+        "run_id": run_id,
+        "type": event_type,
+        "timestamp": datetime.now().isoformat(),
+    }
+    if node is not None:
+        event["node"] = node
+    if status is not None:
+        event["status"] = status.value
+    if error is not None:
+        event["error"] = error
+    events.append(event)
+
+
 async def _execute_run_graph(run_id: str, task: str, options: dict[str, object]) -> None:
     """Background task to execute the agent graph for a run."""
+    _append_run_event(run_id, "run.started")
     try:
         # Update status to running
         if run_id in _runs:
@@ -148,13 +172,21 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
             status=RunStatus.RUNNING,
         )
 
-        # Execute the graph (config with thread_id is harmless even without checkpointer)
+        # Execute the graph and retain its latest complete state.
         config: RunnableConfig = {"configurable": {"thread_id": run_id}}
-        final_state = await agent_graph.ainvoke(initial_state, config=config)
+        final_state: RunState | None = None
+        async for mode, chunk in agent_graph.astream(
+            initial_state, config=config, stream_mode=["updates", "values"]
+        ):
+            if mode == "updates" and isinstance(chunk, dict):
+                for node_name in chunk:
+                    if isinstance(node_name, str):
+                        _append_run_event(run_id, "node.completed", node=node_name)
+            elif mode == "values" and isinstance(chunk, dict):
+                final_state = RunState.model_validate(chunk)
 
-        # Normalize final state (ainvoke may return a dict depending on LangGraph version)
-        if isinstance(final_state, dict):
-            final_state = RunState.model_validate(final_state)
+        if final_state is None:
+            raise RuntimeError("Agent graph did not emit a final values state")
 
         # Determine final status: use graph's status, but respect BLOCK verdict
         final_status = final_state.status
@@ -185,6 +217,7 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
                 status=final_status,
                 answer_length=len(final_state.draft.answer) if final_state.draft else 0
             )
+        _append_run_event(run_id, "run.completed", status=final_status)
 
     except Exception as e:
         logger.error("Graph execution failed", run_id=run_id, error=str(e), exc_info=True)
@@ -199,6 +232,7 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
                 ),
                 "completed_at": datetime.now(),
             })
+        _append_run_event(run_id, "run.failed", status=RunStatus.FAILED, error=str(e))
 
 
 @router.post("", response_model=RunSummary, status_code=202)
