@@ -29,7 +29,8 @@ async def test_unsafe_task_is_blocked_without_database_access() -> None:
         options=RunOptions(),
     )
 
-    final_state = await agent_graph.ainvoke(initial_state)
+    result = await agent_graph.ainvoke(initial_state)
+    final_state = RunState.model_validate(result) if isinstance(result, dict) else result
 
     assert final_state.status == RunStatus.BLOCKED
     assert final_state.report is not None
