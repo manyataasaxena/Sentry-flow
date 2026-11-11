@@ -81,6 +81,27 @@ export type RunEvent = {
   error?: string;
 };
 
+export type EvalResult = {
+  case_id: string;
+  category: string;
+  expected: "block" | "sanitize" | "pass";
+  actual: "block" | "sanitize" | "pass";
+  passed: boolean;
+  latency_ms: number;
+  detail: string;
+};
+
+export type EvalReport = {
+  id: string;
+  total: number;
+  passed: number;
+  pass_rate: number;
+  critical_block_rate: number;
+  false_positive_rate: number;
+  by_category: Record<string, number>;
+  results: EvalResult[];
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -103,3 +124,5 @@ export const getRunEvents = async (id: string, afterSeq = 0): Promise<RunEvent[]
 export const listTools = (): Promise<ToolSpec[]> => request("/tools");
 export const listBreakers = (): Promise<Breaker[]> => request("/system/breakers");
 export const metricsSummary = (): Promise<MetricsSummary> => request("/system/metrics/summary");
+export const listEvals = (): Promise<EvalReport[]> => request("/evals");
+export const runEvals = (): Promise<EvalReport> => request("/evals/run", { method: "POST" });

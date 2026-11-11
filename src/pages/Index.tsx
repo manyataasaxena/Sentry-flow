@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Breaker, createRun, getRun, getRunEvents, listBreakers, listRuns, listTools, metricsSummary, RunDetail as RunDetailData, RunEvent, RunSummary, ToolSpec } from "@/lib/api";
+import { Breaker, createRun, EvalReport, getRun, getRunEvents, listBreakers, listEvals, listRuns, listTools, metricsSummary, runEvals, RunDetail as RunDetailData, RunEvent, RunSummary, ToolSpec } from "@/lib/api";
 
 const examples = ["What is the capital of France?", "Calculate 2 + 3 * 4", "How to make a bomb"];
 const runStages = [
@@ -182,8 +182,43 @@ function RunDetailPanel({ runId, onBack }: { runId: string; onBack: () => void }
   );
 }
 
+function EvalsPanel() {
+  const [reports, setReports] = useState<EvalReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const latest = reports[0];
+
+  useEffect(() => {
+    void listEvals().then(setReports).catch(() => setError("Could not load evaluation reports.")).finally(() => setLoading(false));
+  }, []);
+
+  async function handleRun() {
+    setRunning(true);
+    setError("");
+    try {
+      const report = await runEvals();
+      setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+    } catch {
+      setError("Could not run the adversarial suite. Check that the backend is reachable.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return <section className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Adversarial evaluations</h2><p className="mt-1 text-sm text-slate-400">Run the agent against the versioned adversarial case corpus.</p></div><Button onClick={() => void handleRun()} disabled={running} className="gap-2 bg-cyan-300 text-slate-950 hover:bg-cyan-200">{running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}Run Adversarial Suite</Button></div>
+    {error && <p role="alert" className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-3 text-sm text-rose-200">{error}</p>}
+    {loading ? <Skeleton className="h-36 rounded-2xl bg-white/[0.06]" /> : latest ? <>
+      <div className="grid gap-3 sm:grid-cols-3"><Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardContent className="p-5"><p className="text-sm text-slate-400">Pass rate</p><p className="mt-2 text-3xl font-semibold">{(latest.pass_rate * 100).toFixed(1)}%</p><p className="mt-1 text-xs text-slate-500">{latest.passed} / {latest.total} cases · {latest.id}</p></CardContent></Card><Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardContent className="p-5"><p className="text-sm text-slate-400">Critical block rate</p><p className="mt-2 text-3xl font-semibold">{(latest.critical_block_rate * 100).toFixed(1)}%</p></CardContent></Card><Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardContent className="p-5"><p className="text-sm text-slate-400">Benign false positives</p><p className="mt-2 text-3xl font-semibold">{(latest.false_positive_rate * 100).toFixed(1)}%</p></CardContent></Card></div>
+      <Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardHeader><CardTitle className="text-base">Results by category</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(latest.by_category).map(([category, rate]) => <div key={category} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"><div className="flex justify-between gap-2"><span className="text-sm capitalize text-slate-300">{category.replace(/_/g, " ")}</span><span className="text-sm font-semibold">{(rate * 100).toFixed(1)}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${rate * 100}%` }} /></div></div>)}</CardContent></Card>
+      <Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardHeader><CardTitle className="text-base">Failing cases</CardTitle></CardHeader><CardContent><div className="overflow-x-auto rounded-xl border border-white/10"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-white/[0.035] text-xs uppercase tracking-wider text-slate-500"><tr><th className="p-3 font-medium">Case</th><th className="p-3 font-medium">Category</th><th className="p-3 font-medium">Expected</th><th className="p-3 font-medium">Actual</th><th className="p-3 font-medium">Detail</th></tr></thead><tbody>{latest.results.filter((result) => !result.passed).map((result) => <tr key={result.case_id} className="border-t border-white/[0.07]"><td className="p-3 font-mono text-xs">{result.case_id}</td><td className="p-3">{result.category.replace(/_/g, " ")}</td><td className="p-3">{result.expected}</td><td className="p-3"><Badge className={statusTone(result.actual === "block" ? "blocked" : "failed")}>{result.actual}</Badge></td><td className="p-3 text-slate-400">{result.detail || "Outcome mismatch"}</td></tr>)}{latest.results.every((result) => result.passed) && <tr><td colSpan={5} className="p-8 text-center text-emerald-200">All cases passed.</td></tr>}</tbody></table></div></CardContent></Card>
+    </> : <p className="rounded-xl border border-white/10 p-6 text-sm text-slate-400">No evaluation reports yet. Run the suite to generate results.</p>}
+  </section>;
+}
+
 export default function Index() {
-  const [tab, setTab] = useState<"overview" | "runs" | "tools" | "system">("overview");
+  const [tab, setTab] = useState<"overview" | "runs" | "tools" | "system" | "evals">("overview");
   const [query, setQuery] = useState("");
   const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof metricsSummary>> | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
@@ -283,7 +318,7 @@ export default function Index() {
 
           {loading ? <LoadingCards /> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{kpis.map((kpi) => <Card key={kpi.label} className="border-white/10 bg-slate-900/70 text-slate-100 shadow-xl shadow-black/10"><CardContent className="flex items-start justify-between p-5"><div><p className="text-sm text-slate-400">{kpi.label}</p><p className="mt-3 text-3xl font-semibold tracking-tight">{kpi.value}</p></div><div className={`rounded-xl bg-white/[0.04] p-2.5 ${kpi.tint}`}><kpi.icon className="h-5 w-5" /></div></CardContent></Card>)}</div>}
 
-          <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">{(["overview", "runs", "tools", "system"] as const).map((name) => <button key={name} onClick={() => setTab(name)} className={`rounded-lg px-4 py-2 text-sm capitalize transition ${tab === name ? "bg-white/10 text-white" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}>{name}</button>)}</div>
+          <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">{(["overview", "runs", "tools", "system", "evals"] as const).map((name) => <button key={name} onClick={() => setTab(name)} className={`rounded-lg px-4 py-2 text-sm capitalize transition ${tab === name ? "bg-white/10 text-white" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}>{name}</button>)}</div>
 
           {selectedRunId && <RunDetailPanel runId={selectedRunId} onBack={() => setSelectedRunId(null)} />}
 
@@ -294,6 +329,7 @@ export default function Index() {
           {!selectedRunId && tab === "tools" && <Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardHeader><CardTitle className="text-base">Tool registry</CardTitle></CardHeader><CardContent>{toolsLoading ? <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24 bg-white/[0.06]" />)}</div> : <div className="grid gap-3 md:grid-cols-2">{tools.map((tool) => <ToolCard key={tool.name} tool={tool} />)}{!tools.length && <p className="text-sm text-slate-500">No tools returned by the backend.</p>}</div>}</CardContent></Card>}
 
           {!selectedRunId && tab === "system" && <Card className="border-white/10 bg-slate-900/70 text-slate-100"><CardHeader><CardTitle className="text-base">Circuit breakers</CardTitle></CardHeader><CardContent className="space-y-3">{breakersLoading ? Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-16 bg-white/[0.06]" />) : breakers.length ? breakers.map((breaker) => <div key={breaker.dependency} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"><div><p className="font-medium">{breaker.dependency}</p><p className="mt-1 text-xs text-slate-500">Failures: {breaker.failure_count}{breaker.last_failure_at ? ` · Last failure ${formatDate(breaker.last_failure_at)}` : ""}</p></div><Badge className={statusTone(breaker.state)}>{breaker.state}</Badge></div>) : <p className="text-sm text-slate-500">No breaker records returned.</p>}</CardContent></Card>}
+          {!selectedRunId && tab === "evals" && <EvalsPanel />}
         </main>
       </div>
 

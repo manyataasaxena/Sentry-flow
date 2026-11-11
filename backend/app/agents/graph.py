@@ -33,6 +33,7 @@ from ..schemas.tools import (
     WebhookOutput,
 )
 from ..schemas.verification import Verdict, VerificationReport
+from .guardrails import Guardrails
 from .state import RunState, StateUpdate, as_update
 
 logger = get_logger(__name__)
@@ -125,6 +126,12 @@ def _get_mock_search_hits(query: str) -> list[dict[str, str]]:
 @observe(name="intake_guard")
 async def intake_guard(state: RunState) -> dict[str, object]:
     """Validate and classify the user task."""
+    findings = Guardrails.scan(state.task)
+    if findings:
+        return as_update(StateUpdate(
+            intent=IntentClassification(intent=IntentType.UNSAFE, confidence=1.0, rationale="Deterministic guardrail match"),
+            status=RunStatus.BLOCKED,
+        ))
     try:
         response = await llm_gateway.structured(
             IntentClassification,
@@ -299,6 +306,20 @@ async def _execute_step(step: PlanStep) -> ToolResult:
 @observe(name="verifier")
 async def verifier(state: RunState) -> dict[str, object]:
     """Verify the results and provide feedback."""
+    scanned_text = f"{state.task}\n{state.results}"
+    if state.draft:
+        scanned_text = f"{scanned_text}\n{state.draft.answer}"
+    findings = Guardrails.scan(scanned_text)
+    if findings:
+        return as_update(StateUpdate(
+            report=VerificationReport(
+                verdict=Verdict.BLOCK,
+                score=0.0,
+                feedback="The response was blocked by deterministic output guardrails.",
+                safe_message="I can't provide sensitive or unsafe content.",
+            ),
+            status=RunStatus.BLOCKED,
+        ))
     try:
         response = await llm_gateway.structured(
             VerificationReport,
@@ -329,6 +350,13 @@ async def finalize(state: RunState) -> dict[str, object]:
             purpose="final_answer",
             results=state.results,
         )
+        findings = Guardrails.scan(response.answer)
+        if findings:
+            sanitized = Guardrails.redact_sensitive_text(response.answer)
+            if sanitized == response.answer:
+                response = response.model_copy(update={"answer": "I can't provide unsafe or sensitive content."})
+            else:
+                response = response.model_copy(update={"answer": sanitized})
         return as_update(StateUpdate(draft=response, status=RunStatus.COMPLETED))
     except Exception as e:
         logger.error("Finalization failed", error=str(e))
@@ -358,9 +386,9 @@ def create_agent_graph() -> CompiledStateGraph[RunState, None, RunState, RunStat
     workflow.add_edge("safe_refusal", END)
     workflow.add_edge("planner", "approval_gate")
     workflow.add_edge("approval_gate", "worker")
-    workflow.add_edge("worker", "verifier")
-    workflow.add_edge("verifier", "finalize")
-    workflow.add_edge("finalize", END)
+    workflow.add_edge("worker", "finalize")
+    workflow.add_edge("finalize", "verifier")
+    workflow.add_edge("verifier", END)
 
     return workflow.compile()
 
