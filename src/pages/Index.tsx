@@ -76,7 +76,10 @@ function RunDetailPanel({ runId, onBack }: { runId: string; onBack: () => void }
           setSocketOnline(false);
         }
       };
-      socket.onerror = () => setSocketOnline(false);
+      socket.onerror = (event) => {
+        console.error("Run WebSocket connection failed", event);
+        setSocketOnline(false);
+      };
       socket.onclose = () => setSocketOnline(false);
     } catch {
       setSocketOnline(false);
