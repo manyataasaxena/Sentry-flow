@@ -555,17 +555,14 @@
           "evals"
         ],
         "summary": "Run Evals",
-        "description": "Start adversarial evaluation suite.",
         "operationId": "run_evals_api_v1_evals_run_post",
         "responses": {
-          "202": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Run Evals Api V1 Evals Run Post"
+                  "$ref": "#/components/schemas/EvalReport"
                 }
               }
             }
@@ -584,7 +581,6 @@
           "evals"
         ],
         "summary": "List Evals",
-        "description": "List evaluation runs.",
         "operationId": "list_evals_api_v1_evals_get",
         "responses": {
           "200": {
@@ -593,8 +589,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/EvalReport"
                   },
                   "type": "array",
                   "title": "Response List Evals Api V1 Evals Get"
@@ -616,7 +611,6 @@
           "evals"
         ],
         "summary": "Get Eval",
-        "description": "Get evaluation report.",
         "operationId": "get_eval_api_v1_evals__eval_id__get",
         "security": [
           {

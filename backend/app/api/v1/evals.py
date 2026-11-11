@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from tests.adversarial.run_eval import run_adversarial_suite
+
 from ...schemas.evals import EvalReport
 from ..deps import get_current_user
-from tests.adversarial.run_eval import run_adversarial_suite
 
 router = APIRouter(prefix="/api/v1/evals", tags=["evals"])
 _eval_reports: dict[str, EvalReport] = {}
