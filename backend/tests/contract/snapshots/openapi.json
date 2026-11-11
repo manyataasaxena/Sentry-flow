@@ -751,7 +751,7 @@
           "system"
         ],
         "summary": "Metrics Summary",
-        "description": "Get system metrics summary.",
+        "description": "Compute dashboard metrics from stored runs.",
         "operationId": "metrics_summary_api_v1_system_metrics_summary_get",
         "responses": {
           "200": {
@@ -759,7 +759,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  },
                   "type": "object",
                   "title": "Response Metrics Summary Api V1 System Metrics Summary Get"
                 }
