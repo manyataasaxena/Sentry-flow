@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # LLM configuration
     MOCK_LLM: bool = True
+    MOCK_NODE_DELAY_MS: int = 400
     PRIMARY_LLM: str = "openai:gpt-4o-mini"
     FALLBACK_LLM: str = "anthropic:claude-haiku-4-5-20251001"
     OPENAI_API_KEY: SecretStr | None = None

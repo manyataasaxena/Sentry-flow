@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 
 from ...agents.graph import agent_graph
 from ...agents.state import RunState
+from ...core.config import settings
 from ...core.logging import get_logger
 from ...schemas.answer import FinalAnswer
 from ...schemas.common import BudgetUsage, ErrorInfo
@@ -182,6 +183,8 @@ async def _execute_run_graph(run_id: str, task: str, options: dict[str, object])
                 for node_name in chunk:
                     if isinstance(node_name, str):
                         _append_run_event(run_id, "node.completed", node=node_name)
+                        if settings.MOCK_LLM:
+                            await asyncio.sleep(settings.MOCK_NODE_DELAY_MS / 1000)
             elif mode == "values" and isinstance(chunk, dict):
                 final_state = RunState.model_validate(chunk)
 
@@ -318,6 +321,7 @@ async def list_runs(
             created_at=_convert_datetime(run_data.get("created_at"), datetime.now()),
             completed_at=_convert_datetime_optional(run_data.get("completed_at")),
         ))
+    runs.sort(key=lambda run: run.created_at, reverse=True)
     return runs
 
 
