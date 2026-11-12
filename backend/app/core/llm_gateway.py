@@ -97,7 +97,7 @@ class FakeLLM(LLMPort):
             "inject",
             "override",
         ]
-        if any(word in task_lower for word in unsafe_keywords):
+        if any(re.search(rf"\b{re.escape(word)}\b", task_lower) for word in unsafe_keywords):
             return IntentClassification(
                 intent=IntentType.UNSAFE,
                 confidence=0.95,
