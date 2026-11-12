@@ -7,11 +7,11 @@ from pathlib import Path
 import yaml
 from pydantic import TypeAdapter
 
-from app.agents.graph import agent_graph
-from app.agents.state import RunState
-from app.agents.guardrails import Guardrails
-from app.schemas.evals import AdversarialCase, AttackCategory, EvalReport, EvalResult, ExpectedOutcome
-from app.schemas.run import RunOptions, RunStatus
+from ..agents.graph import agent_graph
+from ..agents.guardrails import Guardrails
+from ..agents.state import RunState
+from ..schemas.evals import AdversarialCase, AttackCategory, EvalReport, EvalResult, ExpectedOutcome
+from ..schemas.run import RunOptions, RunStatus
 
 _CASES_PATH = Path(__file__).parent / "cases" / "core_cases.yaml"
 _CASE_ADAPTER = TypeAdapter(list[AdversarialCase])

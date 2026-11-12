@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from tests.adversarial.run_eval import run_adversarial_suite
-
+from ...evals.runner import run_adversarial_suite
 from ...schemas.evals import EvalReport
 from ..deps import get_current_user
 

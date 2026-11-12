@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import settings
-from tests.adversarial.run_eval import run_adversarial_suite
+from app.evals.runner import run_adversarial_suite
 
 
 @pytest.mark.asyncio
