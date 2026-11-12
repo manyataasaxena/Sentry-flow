@@ -340,6 +340,23 @@ async def verifier(state: RunState) -> dict[str, object]:
 @observe(name="finalize")
 async def finalize(state: RunState) -> dict[str, object]:
     """Create the final answer based on all results."""
+    empty_kb_result = any(
+        result.tool == ToolName.KB_LOOKUP
+        and result.status == ToolStatus.SUCCESS
+        and isinstance(result.output, KbOutput)
+        and not result.output.passages
+        for result in state.results
+    )
+    if empty_kb_result:
+        return as_update(StateUpdate(
+            draft=FinalAnswer(
+                answer="No relevant information was found in the knowledge base.",
+                citations=[],
+                confidence=1.0,
+                degraded=True,
+            ),
+            status=RunStatus.COMPLETED,
+        ))
     try:
         response = await llm_gateway.structured(
             FinalAnswer,

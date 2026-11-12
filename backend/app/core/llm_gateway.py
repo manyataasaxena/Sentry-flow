@@ -39,6 +39,18 @@ def _extract_calculator_expression(task: str) -> str:
     return match.group(0).strip() if match else "0"
 
 
+def _truncate_at_word_boundary(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    prefix = text[:limit]
+    if prefix[-1].isspace():
+        boundary = prefix.rstrip()
+    else:
+        words = prefix.rsplit(maxsplit=1)
+        boundary = words[0] if len(words) > 1 else ""
+    return f"{boundary}…"
+
+
 class FakeLLM(LLMPort):
     """Deterministic fake LLM for testing and demo mode."""
 
@@ -265,12 +277,13 @@ class FakeLLM(LLMPort):
                     if isinstance(r.output, KbOutput):
                         passages = r.output.passages
                         for passage in passages[:3]:
-                            answer_parts.append(f"- From KB: {passage.text[:200]}")
+                            quote = _truncate_at_word_boundary(passage.text, 200)
+                            answer_parts.append(f"- From KB: {quote}")
                             citations.append(
                                 Citation(
                                     step_id=step_id,
                                     source=passage.doc_id,
-                                    quote=passage.text[:200],
+                                    quote=quote,
                                 )
                             )
 

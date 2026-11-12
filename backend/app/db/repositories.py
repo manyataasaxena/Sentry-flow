@@ -10,7 +10,28 @@ from ..core.logging import get_logger
 from .models import AuditLog, Base, EvalResult, EvalRun, KbDocument, Run, RunEvent, User
 
 logger = get_logger(__name__)
-KB_STOPWORDS = {"what", "is", "the", "of", "a", "an", "how", "to", "in"}
+KB_STOPWORDS = frozenset({
+    "what", "is", "the", "of", "a", "an", "how", "to", "in",
+    "and", "or", "but", "for", "with", "about", "between", "explain", "describe", "tell", "me", "give", "why", "when", "where", "which", "who", "does", "do", "are", "was", "be", "it", "this", "that", "on", "at", "by", "from", "as",
+})
+
+
+def score_kb_relevance(query: str, text: str) -> float:
+    """Return the proportion of non-stopword query terms found in text."""
+    keywords = [
+        word
+        for word in re.findall(r"[a-z0-9]+", query.lower())
+        if len(word) >= 3 and word not in KB_STOPWORDS
+    ]
+    if not keywords:
+        return 0.0
+
+    document_words = set(re.findall(r"[a-z0-9]+", text.lower()))
+    matches = sum(
+        1 for keyword in keywords
+        if keyword in document_words or f"{keyword}s" in document_words
+    )
+    return matches / len(keywords)
 
 
 class DatabaseRepository:
@@ -173,28 +194,16 @@ class DatabaseRepository:
     # KB operations
     async def search_kb(self, query: str, top_k: int = 10) -> list[tuple[KbDocument, float]]:
         """Search KB documents by matching and ranking query keywords."""
-        keywords = [
-            word
-            for word in re.findall(r"[a-z0-9]+", query.lower())
-            if word not in KB_STOPWORDS
-        ]
-        if not keywords:
-            return []
-
         async with self._session_factory() as session:
             result = await session.execute(select(KbDocument))
-            ranked: list[tuple[KbDocument, int]] = []
+            ranked: list[tuple[KbDocument, float]] = []
             for document in result.scalars().all():
-                searchable = f"{document.title} {document.body}".lower()
-                matches = sum(1 for keyword in keywords if keyword in searchable)
-                if matches:
-                    ranked.append((document, matches))
+                score = score_kb_relevance(query, f"{document.title} {document.body}")
+                if score >= 0.34:
+                    ranked.append((document, score))
 
             ranked.sort(key=lambda item: item[1], reverse=True)
-            return [
-                (document, matches / len(keywords))
-                for document, matches in ranked[:top_k]
-            ]
+            return ranked[:top_k]
 
     # Eval operations
     async def create_eval_run(self, eval_run_data: dict[str, Any]) -> EvalRun:
