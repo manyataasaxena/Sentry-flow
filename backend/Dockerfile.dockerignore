@@ -1,0 +1,7 @@
+**
+!backend
+!backend/**
+backend/tests
+backend/**/__pycache__
+backend/**/*.pyc
+!README.md
